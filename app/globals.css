@@ -1,0 +1,77 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.doc-render h1,
+.doc-render h2,
+.doc-render h3 {
+  font-weight: 600;
+  color: #f5f5f5;
+  margin-top: 1.25em;
+  margin-bottom: 0.5em;
+}
+.doc-render h1 {
+  font-size: 1.5em;
+}
+.doc-render h2 {
+  font-size: 1.25em;
+}
+.doc-render h3 {
+  font-size: 1.1em;
+}
+.doc-render p {
+  margin-bottom: 0.9em;
+  line-height: 1.6;
+  color: #d4d4d4;
+}
+.doc-render ul,
+.doc-render ol {
+  margin-bottom: 0.9em;
+  padding-left: 1.5em;
+  color: #d4d4d4;
+}
+.doc-render li {
+  margin-bottom: 0.3em;
+}
+.doc-render code {
+  background: #262626;
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+.doc-render pre {
+  background: #171717;
+  padding: 1em;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin-bottom: 0.9em;
+}
+.doc-render blockquote {
+  border-left: 3px solid #404040;
+  padding-left: 1em;
+  color: #a3a3a3;
+  margin-bottom: 0.9em;
+}

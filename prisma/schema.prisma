@@ -1,0 +1,276 @@
+// Trading School OS — Prisma schema
+// SQLite for zero-infra local/dev persistence. Swap `provider`/`url` for Postgres in production.
+//
+// Pinned to Prisma 6.x (not the newly-released 7.x): v7 makes driver adapters mandatory even
+// for SQLite, which is unnecessary complexity for a single-file local dev database. v6 is the
+// well-documented, stable line and needs no adapter for this setup.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  STAFF
+}
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         Role     @default(ADMIN)
+  createdAt    DateTime @default(now())
+
+  notes      Note[]
+  auditLogs  AuditLog[]
+  approvals  Approval[]
+}
+
+enum StudentStatus {
+  LEAD
+  TRIAL
+  ACTIVE
+  PAUSED
+  CHURNED
+}
+
+model Student {
+  id           String        @id @default(cuid())
+  name         String
+  email        String        @unique
+  phone        String?
+  status       StudentStatus @default(LEAD)
+  source       String? // how they found the school (referral, ad, organic, etc.)
+  joinedAt     DateTime      @default(now())
+  lastActiveAt DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  notes         Note[]
+  progress      ModuleProgress[]
+  conversations Conversation[]
+  journalTrades JournalTrade[]
+  crmActivities CrmActivity[]
+}
+
+// --- Curriculum / progress -------------------------------------------------
+
+model Module {
+  id          String   @id @default(cuid())
+  title       String
+  slug        String   @unique
+  description String?
+  orderIndex  Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  progress ModuleProgress[]
+}
+
+enum ProgressStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  NEEDS_REVIEW
+}
+
+model ModuleProgress {
+  id        String         @id @default(cuid())
+  studentId String
+  moduleId  String
+  status    ProgressStatus @default(NOT_STARTED)
+  score     Int? // optional quiz score 0-100
+  updatedAt DateTime       @updatedAt
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  module  Module  @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, moduleId])
+}
+
+// --- Notes / CRM activity ---------------------------------------------------
+
+model Note {
+  id        String   @id @default(cuid())
+  studentId String
+  authorId  String?
+  body      String
+  pinned    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  student Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  author  AdminUser? @relation(fields: [authorId], references: [id])
+}
+
+enum CrmActivityType {
+  STATUS_CHANGE
+  FOLLOW_UP
+  EMAIL_DRAFTED
+  MANUAL_LOG
+}
+
+model CrmActivity {
+  id        String          @id @default(cuid())
+  studentId String
+  type      CrmActivityType
+  summary   String
+  createdAt DateTime        @default(now())
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+}
+
+// --- Knowledge base / retrieval --------------------------------------------
+
+enum DocumentStatus {
+  PROCESSING
+  READY
+  ERROR
+}
+
+model Document {
+  id          String         @id @default(cuid())
+  title       String
+  sourceType  String // "markdown_upload" | "manual_entry" | "transcript" (extensible, not an enum)
+  rawContent  String
+  status      DocumentStatus @default(PROCESSING)
+  isSample    Boolean        @default(false) // true for seeded placeholder content, never presented as the real methodology
+  needsReview Boolean        @default(false) // true for content extracted/drafted from another source and not yet confirmed accurate by an admin — distinct from isSample (which means "fake demo content"), this means "real but unconfirmed"
+  tags        String? // comma-separated
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  chunks DocumentChunk[]
+}
+
+model DocumentChunk {
+  id         String   @id @default(cuid())
+  documentId String
+  ordinal    Int
+  content    String
+  createdAt  DateTime @default(now())
+
+  document  Document   @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  citations Citation[]
+}
+
+// --- AI chat -----------------------------------------------------------------
+
+enum ConversationScope {
+  STUDENT
+  ADMIN
+}
+
+model Conversation {
+  id         String            @id @default(cuid())
+  scope      ConversationScope @default(ADMIN)
+  studentId  String?
+  title      String?
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+
+  student  Student?  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  messages Message[]
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
+model Message {
+  id             String      @id @default(cuid())
+  conversationId String
+  role           MessageRole
+  content        String
+  provider       String // "mock" | "anthropic" — which AI provider generated this (ASSISTANT only)
+  createdAt      DateTime    @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  citations    Citation[]
+}
+
+// Links an assistant Message to the DocumentChunk(s) it cited, so every
+// AI answer can show "source: <document title>" — never an uncited claim.
+model Citation {
+  id        String   @id @default(cuid())
+  messageId String
+  chunkId   String
+  score     Float // retrieval similarity score, for transparency/debugging
+
+  message Message       @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  chunk   DocumentChunk @relation(fields: [chunkId], references: [id], onDelete: Cascade)
+}
+
+// --- Trading journal ----------------------------------------------------------
+
+model JournalTrade {
+  id           String   @id @default(cuid())
+  studentId    String
+  symbol       String
+  direction    String // long/short
+  entryPrice   Float?
+  exitPrice    Float?
+  result       String? // win/loss/breakeven
+  rMultiple    Float?
+  setupTag     String? // e.g. "displacement+FVG", freeform, not constrained to a fixed enum
+  mistakeTag   String? // recurring execution/process mistake label
+  notes        String?
+  tradedAt     DateTime
+  createdAt    DateTime @default(now())
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+}
+
+// --- Audit / approvals ---------------------------------------------------------
+
+enum AuditAction {
+  AI_CHAT_QUERY
+  AI_CHAT_RESPONSE
+  DOCUMENT_UPLOADED
+  STUDENT_CREATED
+  STUDENT_UPDATED
+  NOTE_ADDED
+  APPROVAL_REQUESTED
+  APPROVAL_DECIDED
+  LOGIN
+}
+
+model AuditLog {
+  id        String      @id @default(cuid())
+  actorId   String?
+  action    AuditAction
+  detail    String // human-readable summary
+  metadata  String? // JSON-encoded extra context
+  createdAt DateTime    @default(now())
+
+  actor AdminUser? @relation(fields: [actorId], references: [id])
+}
+
+// Sensitive/business-impacting AI-proposed actions (e.g. "send this email",
+// "change student status to CHURNED") land here for human approval instead
+// of executing automatically. Nothing in this schema lets an AI action
+// bypass this table for anything marked sensitive.
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Approval {
+  id          String         @id @default(cuid())
+  requestedBy String? // AdminUser id, or null if AI-originated
+  actionType  String // e.g. "SEND_EMAIL", "STATUS_CHANGE"
+  payload     String // JSON-encoded proposed action
+  status      ApprovalStatus @default(PENDING)
+  decidedById String?
+  decidedAt   DateTime?
+  createdAt   DateTime       @default(now())
+
+  decidedBy AdminUser? @relation(fields: [decidedById], references: [id])
+}
