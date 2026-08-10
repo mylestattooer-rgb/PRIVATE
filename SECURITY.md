@@ -76,11 +76,15 @@ called for. Still to apply as each new student-scoped domain lands (journal, con
 mastery state, Phase 2+): every query must take the session-derived student ID as a mandatory
 parameter, never trust one from form data or a URL param.
 
-### 2.2 Rate limiting (Phase 1, still pending)
+### 2.2 Rate limiting — DONE
 
-No rate limiting exists on login or AI-chat endpoints today — acceptable for a single-admin
-internal tool, not acceptable once a login form is student-facing and public-reachable. Add basic
-per-IP/per-account throttling on `login` and `api/chat` before student auth ships, not after.
+`proxy.ts` (Next.js 16's `middleware.ts` successor) throttles `POST /login`, `POST /student/login`,
+and `POST /api/chat` per-IP with an in-memory sliding window (10/min for the two login endpoints,
+30/min for chat), returning 429 with `Retry-After` once exceeded. Verified in-browser: 10 rapid
+login attempts succeed through to the app, the 11th+ are blocked, and the page doesn't break when
+blocked. Deliberately in-memory and per-process — matches this app's current single-instance
+SQLite architecture (see `ARCHITECTURE.md`); revisit with a shared store (Redis, etc.) alongside
+the Postgres/multi-instance migration, since a second instance would keep independent counters.
 
 ### 2.3 Upload validation (Phase 5, Chart Lab)
 

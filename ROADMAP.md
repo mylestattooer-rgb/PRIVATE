@@ -37,12 +37,13 @@ Turbopack setup — caught only by in-browser verification, not by unit tests. F
 new student code — a previously-undiscovered gap in what "Phase 1 admin MVP, verified in-browser"
 actually covered.
 
+Rate limiting (`SECURITY.md` §2.2) landed right after this table was first written: `proxy.ts`
+throttles `POST /login`, `/student/login`, `/api/chat` per-IP (10-30/min), verified in-browser.
+
 **Next concrete milestone:**
 1. Curriculum versioning (`CURRICULUM_SYSTEM.md`) — `Course`/`LessonVersion`/`Concept` — the one
    Phase 1 item still unstarted, and Phase 2's prerequisite.
-2. Rate limiting on `login`/`api/chat` (`SECURITY.md` §2.2) — now genuinely overdue since
-   `/student/login` is a real, if not yet publicly deployed, unauthenticated-reachable endpoint.
-3. Expand the test suite as new domains land, rather than treating 14 tests as sufficient forever —
+2. Expand the test suite as new domains land, rather than treating 14 tests as sufficient forever —
    this was a floor, not a target.
 
 ## Phase 2 — Assessment: NOT STARTED

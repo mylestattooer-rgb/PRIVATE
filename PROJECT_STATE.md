@@ -38,6 +38,7 @@ live.
 | Entitlements | **WORKING** | `app/lib/domains/entitlements/`, one capability (`USE_AI_TUTOR`) checked server-side and shown on the student dashboard |
 | Automated tests | **WORKING (minimal)** | vitest, `npm test` — 14 tests covering TF-IDF retrieval scoring and admin/student session round-trips |
 | CI | **CONFIGURED, INERT** | `.github/workflows/trading-school-ci.yml` — repo has no git remote yet, so it has never actually run |
+| Rate limiting | **WORKING** | `proxy.ts` — 10/min on `login`/`student/login`, 30/min on `api/chat`, per-IP; verified 429 after limit, page doesn't break |
 
 ### Explicitly out of scope for Phase 1 (schema exists, no UI yet)
 
@@ -216,17 +217,14 @@ whenever they're ready, didn't want to auto-rename without asking).
    wasn't derivable from the research notes at all.
 2. **Retrieval quality**: add a similarity floor (see Known issues above) once real content
    exists to tune against.
-3. **Rate limiting on `/login`, `/student/login`, `/api/chat`** (`SECURITY.md` §2.2) — now
-   genuinely overdue since student login is a real unauthenticated-reachable endpoint, not
-   deferred-forever admin-only surface.
-4. **Curriculum versioning** (`CURRICULUM_SYSTEM.md`) — the one Trading X Phase 1 item still
+3. **Curriculum versioning** (`CURRICULUM_SYSTEM.md`) — the one Trading X Phase 1 item still
    unstarted; unblocks Phase 2 (assessment/progression).
-5. **Lead/sales CRM workflows** — `CrmActivity`/`Student.status`/`Student.source` are already
+4. **Lead/sales CRM workflows** — `CrmActivity`/`Student.status`/`Student.source` are already
    modeled.
-6. **Trading journal ingestion + mistake-pattern analysis** — `JournalTrade` model is ready;
+5. **Trading journal ingestion + mistake-pattern analysis** — `JournalTrade` model is ready;
    needs an upload/entry UI and an analysis pass (likely another `AiProvider`-style pluggable
    piece rather than hardcoded logic).
-7. Consider whether Next.js 16 / React 19 stay pinned as-is or get revisited once they're
+6. Consider whether Next.js 16 / React 19 stay pinned as-is or get revisited once they're
    more battle-tested — flagging only because both were bleeding-edge at scaffold time, and
    this session found one real behavioral quirk in this version (see Known issues above).
 
