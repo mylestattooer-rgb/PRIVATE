@@ -1,10 +1,17 @@
 # PROJECT_STATE — Trading School OS
 
-Last updated: 2026-08-09 (Phase 1 MVP built + first real methodology extraction pass, both
-verified end-to-end in-browser).
+Last updated: 2026-08-10 (Phase 0 discovery docs written for the "Trading X" long-term vision,
+then Phase 1's first milestone — student auth + entitlements — built and verified in the same
+session; see below and `ROADMAP.md`).
 
 Read this before starting new work — it should let a fresh session pick up without
 re-deriving context.
+
+**Trading X long-term architecture**: this file stays the single source of truth for *current*
+build status (the table right below). For the full 62-section product vision and its Phase 0-10
+architecture reconciliation, see `PRODUCT_SPEC.md`, `ARCHITECTURE.md`, `DATABASE.md`,
+`AI_ARCHITECTURE.md`, `SECURITY.md`, `CURRICULUM_SYSTEM.md`, and — most useful for "what's next" —
+`ROADMAP.md`.
 
 ## What has been built (Phase 1)
 
@@ -27,6 +34,10 @@ live.
 | Audit log | **WORKING** | Every login, AI query/response, student/document mutation logged (`AuditLog` table) |
 | Sample/placeholder labeling | **WORKING** | Seeded curriculum modules and knowledge docs are visibly marked "(sample)" / "SAMPLE" everywhere they appear — never presented as real methodology |
 | Extracted-content review workflow | **WORKING** | `Document.needsReview` flag, distinct from `isSample` — see "Methodology extraction" section below |
+| Student login + dashboard | **WORKING** | `/student/login`, gated `/student` dashboard; separate session cookie from admin (`ARCHITECTURE.md` "Auth: two principal types"); only ACTIVE demo students have login enabled, TRIAL/PAUSED/LEAD correctly rejected |
+| Entitlements | **WORKING** | `app/lib/domains/entitlements/`, one capability (`USE_AI_TUTOR`) checked server-side and shown on the student dashboard |
+| Automated tests | **WORKING (minimal)** | vitest, `npm test` — 14 tests covering TF-IDF retrieval scoring and admin/student session round-trips |
+| CI | **CONFIGURED, INERT** | `.github/workflows/trading-school-ci.yml` — repo has no git remote yet, so it has never actually run |
 
 ### Explicitly out of scope for Phase 1 (schema exists, no UI yet)
 
@@ -43,6 +54,39 @@ platform shape is visible without pretending they work:
   requests yet
 - **Analytics** (school-wide performance, common-question mining) — no aggregation beyond
   the dashboard's raw counts
+
+## Long-term vision: "Trading X Student App" (2026-08-09)
+
+The admin's stated end goal is for this platform to eventually replace Skool as the entire
+student-facing product, not just sit alongside it as an internal CRM/knowledge tool. Features
+named for that future student app:
+
+- Lessons
+- Progression levels
+- Trading simulator
+- Chart quizzes
+- Trade journal
+- AI tutor trained on the school's methodology
+- Upload chart → AI asks the student what they see
+- Challenges
+- Achievements
+- Community
+- Prop-firm preparation
+
+None of this is scoped or scheduled yet — recorded here so it isn't lost, not as a commitment to
+build in this order. Cross-reference against what Phase 1 already has or has scaffolded:
+
+- **AI tutor** — the existing `/admin/chat` AI assistant (retrieval + citations, see above) is
+  the admin-facing precursor to this; a student-facing version would need its own auth/UI surface
+  and likely a stricter prompt (answer only from approved, non-`needsReview` content).
+- **Trade journal** — `JournalTrade` model already exists in `prisma/schema.prisma`, unused (see
+  Outstanding task #5). "Upload chart → AI asks what you see" is a materially different feature
+  (image input, Socratic-style prompting) from journal logging/analysis — don't conflate the two
+  when scoping.
+- **Lessons / progression levels** — overlaps with the existing `Module`/`ModuleProgress` models,
+  which currently model simple curriculum + per-student status/score, not gamified levels.
+- **Trading simulator, chart quizzes, challenges, achievements, community, prop-firm prep** — no
+  existing schema or scaffolding for any of these; all net-new.
 
 ## Key architectural decisions
 
@@ -121,8 +165,10 @@ whenever they're ready, didn't want to auto-rename without asking).
 ## Current database schema (see `prisma/schema.prisma` for the authoritative source)
 
 - **AdminUser** — email/passwordHash/name/role; owns Notes, AuditLog entries, Approvals
-- **Student** — CRM record (status: LEAD/TRIAL/ACTIVE/PAUSED/CHURNED, source, timestamps);
-  owns Notes, ModuleProgress, Conversations, JournalTrades (unused), CrmActivities
+- **Student** — CRM record (status: LEAD/TRIAL/ACTIVE/PAUSED/CHURNED, source, timestamps) **and**
+  login-capable account (nullable passwordHash/authEnabledAt, planId → Plan); owns Notes,
+  ModuleProgress, Conversations, JournalTrades (unused), CrmActivities
+- **Plan** — entitlements: name + comma-separated capabilities string; one `free` plan seeded
 - **Module** / **ModuleProgress** — curriculum + per-student progress (status + optional score)
 - **Note** — free-text CRM notes on a student, optional author, optional pinned flag
 - **CrmActivity** — lightweight activity log distinct from AuditLog (student-facing CRM
@@ -144,35 +190,45 @@ whenever they're ready, didn't want to auto-rename without asking).
   across sample docs give weak-but-nonzero cosine similarity to unrelated docs. Not wrong, just
   noisy; a similarity-score floor (e.g. drop anything below ~0.1) would tighten this once there's
   a larger, more realistic knowledge base to tune against.
-- No automated test suite yet (see Outstanding tasks).
 - `app/api/chat/route.ts` does not stream — answers return in one shot. Fine for the mock
   provider; worth revisiting if real Anthropic answers start feeling slow.
 - Browser-automation clicks (`computer` tool) intermittently didn't register during manual
   testing in this environment (coordinate/compositing issue, not an app bug) — JS-dispatched
-  events were used as a fallback and confirmed every flow works. Mentioning this only so a
-  future session doesn't mistake it for a real bug if it recurs.
+  events were used as a fallback and confirmed every flow works. Recurred again during Phase 1
+  student-auth testing (2026-08-10): a click that had actually succeeded server-side (student
+  record created) appeared not to on the immediately-following page-text read; a fresh navigate
+  showed the correct state. Treat a `get_page_text` right after a `computer` click as possibly
+  stale — re-navigate or re-read before concluding an action failed.
+- **Real bug found and fixed 2026-08-10**: `redirect()` from `next/navigation` doesn't propagate
+  when called inside an awaited cross-module helper in this Next.js 16.3.0 + Turbopack setup —
+  affected the pre-existing admin auth too, not just new code. Full writeup in `SECURITY.md`
+  "Known Next.js 16 redirect quirk". Only caught by in-browser verification; a unit test with a
+  mocked `redirect()` would have (and initially did) hidden it.
 
 ## Outstanding tasks (recommended order)
 
-1. **Automated tests.** Nothing beyond `tsc --noEmit` + `eslint` + manual browser verification
-   exists yet. Start with the AI retrieval scoring function (pure, easy to unit test) and the
-   auth session round-trip.
-2. **Real methodology ingestion — partially done, needs finishing.** 6 concept-level documents
+1. **Real methodology ingestion — partially done, needs finishing.** 6 concept-level documents
    extracted from internal research notes are live under `needsReview` (see "Methodology
    extraction" above); 1 approved so far, 5 awaiting review at `/admin/knowledge`. These cover
    *process discipline* (risk sizing, backtesting rigor, confluence design) — they do NOT cover
    the ICT/SMC vocabulary the 3 seeded SAMPLE docs stand in for (market structure, FVG, volume
    profile), which still need real replacement content from the admin directly, since that
    wasn't derivable from the research notes at all.
-3. **Retrieval quality**: add a similarity floor (see Known issues above) once real content
+2. **Retrieval quality**: add a similarity floor (see Known issues above) once real content
    exists to tune against.
-4. **Lead/sales CRM workflows** — the next Phase-1-adjacent feature explicitly requested in
-   the long-term vision; `CrmActivity`/`Student.status`/`Student.source` are already modeled.
-5. **Trading journal ingestion + mistake-pattern analysis** — `JournalTrade` model is ready;
+3. **Rate limiting on `/login`, `/student/login`, `/api/chat`** (`SECURITY.md` §2.2) — now
+   genuinely overdue since student login is a real unauthenticated-reachable endpoint, not
+   deferred-forever admin-only surface.
+4. **Curriculum versioning** (`CURRICULUM_SYSTEM.md`) — the one Trading X Phase 1 item still
+   unstarted; unblocks Phase 2 (assessment/progression).
+5. **Lead/sales CRM workflows** — `CrmActivity`/`Student.status`/`Student.source` are already
+   modeled.
+6. **Trading journal ingestion + mistake-pattern analysis** — `JournalTrade` model is ready;
    needs an upload/entry UI and an analysis pass (likely another `AiProvider`-style pluggable
    piece rather than hardcoded logic).
-6. Consider whether Next.js 16 / React 19 stay pinned as-is or get revisited once they're
-   more battle-tested — flagging only because both were bleeding-edge at scaffold time.
+7. Consider whether Next.js 16 / React 19 stay pinned as-is or get revisited once they're
+   more battle-tested — flagging only because both were bleeding-edge at scaffold time, and
+   this session found one real behavioral quirk in this version (see Known issues above).
 
 ## Next recommended task
 

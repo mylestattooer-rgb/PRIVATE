@@ -23,6 +23,14 @@ async function main() {
   });
   console.log(`Admin user ready: ${admin.email}`);
 
+  // --- Default plan (entitlements, ARCHITECTURE.md) --------------------------
+  const freePlan = await prisma.plan.upsert({
+    where: { name: "free" },
+    update: {},
+    create: { name: "free", capabilities: "USE_AI_TUTOR" },
+  });
+  console.log(`Plan ready: ${freePlan.name} (${freePlan.capabilities})`);
+
   // --- Curriculum modules (SAMPLE — placeholder topic labels) ---------------
   const moduleTitles = [
     "Multi-Timeframe Market Structure (sample)",
@@ -51,24 +59,35 @@ async function main() {
   console.log(`${modules.length} curriculum modules ready.`);
 
   // --- Demo students ----------------------------------------------------------
+  // canLogin: only ACTIVE students get a login-capable account seeded, matching
+  // the real intent of Student.authEnabledAt — a LEAD/TRIAL/PAUSED CRM record
+  // hasn't necessarily been given student-portal access yet.
   const studentsData = [
-    { name: "Ava Whitfield", email: "ava.whitfield@example.com", status: "ACTIVE" as const, source: "referral" },
-    { name: "Marcus Odei", email: "marcus.odei@example.com", status: "ACTIVE" as const, source: "youtube" },
-    { name: "Priya Nandakumar", email: "priya.n@example.com", status: "TRIAL" as const, source: "instagram ad" },
-    { name: "Tom Delacroix", email: "tom.delacroix@example.com", status: "PAUSED" as const, source: "referral" },
-    { name: "Lena Furst", email: "lena.furst@example.com", status: "LEAD" as const, source: "webinar" },
+    { name: "Ava Whitfield", email: "ava.whitfield@example.com", status: "ACTIVE" as const, source: "referral", canLogin: true },
+    { name: "Marcus Odei", email: "marcus.odei@example.com", status: "ACTIVE" as const, source: "youtube", canLogin: true },
+    { name: "Priya Nandakumar", email: "priya.n@example.com", status: "TRIAL" as const, source: "instagram ad", canLogin: false },
+    { name: "Tom Delacroix", email: "tom.delacroix@example.com", status: "PAUSED" as const, source: "referral", canLogin: false },
+    { name: "Lena Furst", email: "lena.furst@example.com", status: "LEAD" as const, source: "webinar", canLogin: false },
   ];
 
+  const studentPassword = process.env.STUDENT_SEED_PASSWORD ?? "ChangeMe123!";
+  const studentPasswordHash = await bcrypt.hash(studentPassword, 10);
+
   const students = [];
-  for (const s of studentsData) {
+  for (const { canLogin, ...s } of studentsData) {
+    // update: (not `{}`) so re-running the seed against a DB from before a
+    // schema change (e.g. planId/passwordHash didn't exist yet) still
+    // converges existing rows to the intended demo state, not just new ones.
+    const authFields = canLogin ? { passwordHash: studentPasswordHash, authEnabledAt: new Date() } : {};
     const student = await prisma.student.upsert({
       where: { email: s.email },
-      update: {},
-      create: { ...s, lastActiveAt: new Date() },
+      update: { planId: freePlan.id, ...authFields },
+      create: { ...s, lastActiveAt: new Date(), planId: freePlan.id, ...authFields },
     });
     students.push(student);
   }
   console.log(`${students.length} demo students ready.`);
+  console.log(`Student login (ACTIVE students only): <their email> / ${studentPassword}`);
 
   // Notes + progress for the two active students
   const [ava, marcus, priya, tom] = students;

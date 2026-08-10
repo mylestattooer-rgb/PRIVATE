@@ -3,12 +3,17 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/app/lib/db";
-import { requireAdmin } from "@/app/lib/auth";
+import { getSession } from "@/app/lib/auth";
 import { logAudit } from "@/app/lib/audit";
 import { indexDocument } from "@/app/lib/ai/retrieval";
 
+// redirect() is called directly in each action body, not via a shared
+// cross-module guard — see app/lib/auth.ts's note on the Next.js 16 redirect
+// propagation quirk (SECURITY.md "Known Next.js 16 redirect quirk").
+
 export async function uploadDocument(formData: FormData) {
-  const session = await requireAdmin();
+  const session = await getSession();
+  if (!session) redirect("/login");
 
   const title = String(formData.get("title") ?? "").trim();
   const pasted = String(formData.get("content") ?? "").trim();
@@ -44,7 +49,8 @@ export async function uploadDocument(formData: FormData) {
 }
 
 export async function approveDocument(formData: FormData) {
-  const session = await requireAdmin();
+  const session = await getSession();
+  if (!session) redirect("/login");
   const id = String(formData.get("id") ?? "");
   if (!id) return;
 
@@ -61,7 +67,8 @@ export async function approveDocument(formData: FormData) {
 }
 
 export async function deleteDocument(formData: FormData) {
-  const session = await requireAdmin();
+  const session = await getSession();
+  if (!session) redirect("/login");
   const id = String(formData.get("id") ?? "");
   if (!id) return;
 

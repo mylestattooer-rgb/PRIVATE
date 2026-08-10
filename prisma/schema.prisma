@@ -52,11 +52,36 @@ model Student {
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 
+  // --- Student-facing login (added Phase 1, DATABASE.md §2.1) ---------------
+  // Nullable: a LEAD/TRIAL record can exist as a pure CRM row before the
+  // student ever creates their own login. Set together when an account is
+  // provisioned; both null means "CRM lead, no login yet".
+  passwordHash  String?
+  authEnabledAt DateTime?
+
+  planId String?
+  plan   Plan?   @relation(fields: [planId], references: [id])
+
   notes         Note[]
   progress      ModuleProgress[]
   conversations Conversation[]
   journalTrades JournalTrade[]
   crmActivities CrmActivity[]
+}
+
+// --- Entitlements (ARCHITECTURE.md "central entitlements module") ----------
+
+model Plan {
+  id           String   @id @default(cuid())
+  name         String   @unique
+  // Comma-separated capability strings (e.g. "USE_AI_TUTOR,CREATE_JOURNAL"),
+  // matching the freeform-string style already used for Document.tags —
+  // deliberately not an enum so new capabilities/plans never need a migration
+  // to grant, only a data change (see app/lib/domains/entitlements/).
+  capabilities String
+  createdAt    DateTime @default(now())
+
+  students Student[]
 }
 
 // --- Curriculum / progress -------------------------------------------------

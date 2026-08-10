@@ -3,11 +3,16 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/app/lib/db";
-import { requireAdmin } from "@/app/lib/auth";
+import { getSession } from "@/app/lib/auth";
 import { logAudit } from "@/app/lib/audit";
 
+// redirect() is called directly in each action body, not via a shared
+// cross-module guard — see app/lib/auth.ts's note on the Next.js 16 redirect
+// propagation quirk (SECURITY.md "Known Next.js 16 redirect quirk").
+
 export async function createStudent(formData: FormData) {
-  const session = await requireAdmin();
+  const session = await getSession();
+  if (!session) redirect("/login");
 
   const name = String(formData.get("name") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
@@ -36,7 +41,8 @@ export async function createStudent(formData: FormData) {
 }
 
 export async function updateStudentStatus(formData: FormData) {
-  const session = await requireAdmin();
+  const session = await getSession();
+  if (!session) redirect("/login");
   const studentId = String(formData.get("studentId") ?? "");
   const status = String(formData.get("status") ?? "") as
     | "LEAD"
@@ -63,7 +69,8 @@ export async function updateStudentStatus(formData: FormData) {
 }
 
 export async function addNote(formData: FormData) {
-  const session = await requireAdmin();
+  const session = await getSession();
+  if (!session) redirect("/login");
   const studentId = String(formData.get("studentId") ?? "");
   const body = String(formData.get("body") ?? "").trim();
   if (!studentId || !body) return;
@@ -82,7 +89,8 @@ export async function addNote(formData: FormData) {
 }
 
 export async function updateModuleProgress(formData: FormData) {
-  const session = await requireAdmin();
+  const session = await getSession();
+  if (!session) redirect("/login");
   const studentId = String(formData.get("studentId") ?? "");
   const moduleId = String(formData.get("moduleId") ?? "");
   const status = String(formData.get("status") ?? "") as
