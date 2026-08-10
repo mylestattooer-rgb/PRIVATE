@@ -6,6 +6,7 @@ import { logoutAction } from "./actions";
 const NAV = [
   { href: "/admin", label: "Dashboard" },
   { href: "/admin/students", label: "Students" },
+  { href: "/admin/curriculum", label: "Curriculum" },
   { href: "/admin/knowledge", label: "Knowledge Base" },
   { href: "/admin/chat", label: "AI Assistant" },
   { href: "/admin/audit-log", label: "Audit Log" },

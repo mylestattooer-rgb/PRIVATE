@@ -27,9 +27,10 @@ model AdminUser {
   role         Role     @default(ADMIN)
   createdAt    DateTime @default(now())
 
-  notes      Note[]
-  auditLogs  AuditLog[]
-  approvals  Approval[]
+  notes          Note[]
+  auditLogs      AuditLog[]
+  approvals      Approval[]
+  lessonVersions LessonVersion[]
 }
 
 enum StudentStatus {
@@ -86,6 +87,17 @@ model Plan {
 
 // --- Curriculum / progress -------------------------------------------------
 
+model Course {
+  id          String   @id @default(cuid())
+  title       String
+  slug        String   @unique
+  description String?
+  orderIndex  Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  modules Module[]
+}
+
 model Module {
   id          String   @id @default(cuid())
   title       String
@@ -94,7 +106,80 @@ model Module {
   orderIndex  Int      @default(0)
   createdAt   DateTime @default(now())
 
+  // Nullable: modules created before Course existed (or not yet categorized)
+  // stay valid rather than forcing a backfill migration — see DATABASE.md §2.2.
+  courseId String?
+  course   Course? @relation(fields: [courseId], references: [id])
+
   progress ModuleProgress[]
+  lessons  Lesson[]
+}
+
+// --- Curriculum versioning (CURRICULUM_SYSTEM.md) --------------------------
+
+enum LessonStatus {
+  DRAFT
+  REVIEW
+  PUBLISHED
+  ARCHIVED
+}
+
+model Lesson {
+  id         String       @id @default(cuid())
+  moduleId   String
+  title      String
+  slug       String
+  status     LessonStatus @default(DRAFT)
+  orderIndex Int          @default(0)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  // The version students currently see. Null until the first version is
+  // published — editing after that creates a new LessonVersion rather than
+  // mutating this one in place, so in-progress students / AI citations tied
+  // to an old version keep resolving correctly (CURRICULUM_SYSTEM.md
+  // "Versioning"). Publishing repoints this at the new version.
+  currentVersionId String?
+  currentVersion   LessonVersion? @relation("CurrentVersion", fields: [currentVersionId], references: [id])
+
+  versions LessonVersion[] @relation("LessonVersions")
+  module   Module          @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  concepts Concept[]
+
+  // Soft prerequisites only (CURRICULUM_SYSTEM.md "Prerequisites") — informational,
+  // not enforced/gated in the UI yet.
+  prerequisites   Lesson[] @relation("LessonPrerequisites")
+  prerequisiteFor Lesson[] @relation("LessonPrerequisites")
+
+  @@unique([moduleId, slug])
+}
+
+model LessonVersion {
+  id                 String    @id @default(cuid())
+  lessonId           String
+  version            Int
+  content            String // markdown; first content type per CURRICULUM_SYSTEM.md
+  learningObjectives String?
+  assessmentCriteria String?
+  authorId           String?
+  createdAt          DateTime  @default(now())
+  publishedAt        DateTime?
+
+  lesson     Lesson     @relation("LessonVersions", fields: [lessonId], references: [id], onDelete: Cascade)
+  author     AdminUser? @relation(fields: [authorId], references: [id])
+  currentFor Lesson[]   @relation("CurrentVersion")
+
+  @@unique([lessonId, version])
+}
+
+model Concept {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+
+  lessons Lesson[]
 }
 
 enum ProgressStatus {
@@ -191,12 +276,12 @@ enum ConversationScope {
 }
 
 model Conversation {
-  id         String            @id @default(cuid())
-  scope      ConversationScope @default(ADMIN)
-  studentId  String?
-  title      String?
-  createdAt  DateTime          @default(now())
-  updatedAt  DateTime          @updatedAt
+  id        String            @id @default(cuid())
+  scope     ConversationScope @default(ADMIN)
+  studentId String?
+  title     String?
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
 
   student  Student?  @relation(fields: [studentId], references: [id], onDelete: Cascade)
   messages Message[]
@@ -223,7 +308,7 @@ model Message {
 // Links an assistant Message to the DocumentChunk(s) it cited, so every
 // AI answer can show "source: <document title>" — never an uncited claim.
 model Citation {
-  id        String   @id @default(cuid())
+  id        String @id @default(cuid())
   messageId String
   chunkId   String
   score     Float // retrieval similarity score, for transparency/debugging
@@ -235,19 +320,19 @@ model Citation {
 // --- Trading journal ----------------------------------------------------------
 
 model JournalTrade {
-  id           String   @id @default(cuid())
-  studentId    String
-  symbol       String
-  direction    String // long/short
-  entryPrice   Float?
-  exitPrice    Float?
-  result       String? // win/loss/breakeven
-  rMultiple    Float?
-  setupTag     String? // e.g. "displacement+FVG", freeform, not constrained to a fixed enum
-  mistakeTag   String? // recurring execution/process mistake label
-  notes        String?
-  tradedAt     DateTime
-  createdAt    DateTime @default(now())
+  id         String   @id @default(cuid())
+  studentId  String
+  symbol     String
+  direction  String // long/short
+  entryPrice Float?
+  exitPrice  Float?
+  result     String? // win/loss/breakeven
+  rMultiple  Float?
+  setupTag   String? // e.g. "displacement+FVG", freeform, not constrained to a fixed enum
+  mistakeTag String? // recurring execution/process mistake label
+  notes      String?
+  tradedAt   DateTime
+  createdAt  DateTime @default(now())
 
   student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
 }
@@ -264,6 +349,9 @@ enum AuditAction {
   APPROVAL_REQUESTED
   APPROVAL_DECIDED
   LOGIN
+  LESSON_CREATED
+  LESSON_UPDATED
+  LESSON_PUBLISHED
 }
 
 model AuditLog {

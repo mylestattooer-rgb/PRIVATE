@@ -12,7 +12,7 @@ Inventory of existing system, architecture decisions, and this doc set (`PRODUCT
 `ARCHITECTURE.md`, `DATABASE.md`, `AI_ARCHITECTURE.md`, `SECURITY.md`, `CURRICULUM_SYSTEM.md`,
 `ROADMAP.md`). No application code changed in this phase.
 
-## Phase 1 — Foundation: MOSTLY DONE
+## Phase 1 — Foundation: DONE
 
 The brief's Phase 1 list is: auth, profiles, database, admin foundations, courses, modules,
 lessons, progress tracking, basic dashboard, testing, deployment pipeline.
@@ -28,7 +28,7 @@ lessons, progress tracking, basic dashboard, testing, deployment pipeline.
 | **Entitlements** | **DONE** — `app/lib/domains/entitlements/`, one capability (`USE_AI_TUTOR`) wired end-to-end |
 | **Testing** | **DONE (minimal)** — vitest, 14 tests (retrieval TF-IDF scoring, auth session round-trips), wired to `npm test` |
 | **Deployment pipeline** | **DONE (inert)** — `.github/workflows/trading-school-ci.yml` (lint+typecheck+test); repo has no git remote yet so it doesn't run anywhere, added as the ready-to-go extension point |
-| Courses / lessons (versioned) | **NOT STARTED** — `CURRICULUM_SYSTEM.md` spec only |
+| Courses / lessons (versioned) | **DONE** — `Course`/`Lesson`/`LessonVersion`/`Concept`, `/admin/curriculum` authoring UI, verified in-browser |
 
 **A real bug was found and fixed while building this** (not a pre-planned task): `redirect()`
 called from a cross-module auth helper silently failed to redirect in this Next.js 16.3.0 +
@@ -37,19 +37,23 @@ Turbopack setup — caught only by in-browser verification, not by unit tests. F
 new student code — a previously-undiscovered gap in what "Phase 1 admin MVP, verified in-browser"
 actually covered.
 
-Rate limiting (`SECURITY.md` §2.2) landed right after this table was first written: `proxy.ts`
-throttles `POST /login`, `/student/login`, `/api/chat` per-IP (10-30/min), verified in-browser.
+Rate limiting (`SECURITY.md` §2.2) and curriculum versioning both landed after this table was
+first written — every brief-listed Phase 1 item is now DONE. `app/lib/domains/learning/` holds the
+lesson-versioning logic (`status.ts` pure state machine, unit-tested; `lessons.ts` the DB half);
+22 tests total now (up from 14).
 
-**Next concrete milestone:**
-1. Curriculum versioning (`CURRICULUM_SYSTEM.md`) — `Course`/`LessonVersion`/`Concept` — the one
-   Phase 1 item still unstarted, and Phase 2's prerequisite.
-2. Expand the test suite as new domains land, rather than treating 14 tests as sufficient forever —
-   this was a floor, not a target.
+**Phase 1 is complete. Next concrete milestone (starts Phase 2):**
+1. Question bank + quizzes, tagged to `Concept` (already exists) — the first piece of real
+   assessment, and what `ConceptMastery` (`DATABASE.md` §2.2) needs before it can track anything.
+2. Progression levels / XP scaffolding (`DATABASE.md` §2.5) — admin-configurable per the brief,
+   deterministic evaluation per `AI_ARCHITECTURE.md`'s determinism boundary.
+3. Continue expanding the test suite as each new domain lands — 22 tests is a floor, not a target.
 
 ## Phase 2 — Assessment: NOT STARTED
 
-Quizzes, question banks, concept mapping (lightweight version per `CURRICULUM_SYSTEM.md`),
-progression levels, achievements, XP. Depends on Phase 1's student auth + entitlements.
+Quizzes, question banks, concept mapping (lightweight version now built, see `CURRICULUM_SYSTEM.md`
+and `DATABASE.md` §2.2), progression levels, achievements, XP. Phase 1's student auth +
+entitlements + curriculum versioning are all in place to build this on.
 
 ## Phase 3 — Journal: NOT STARTED (schema partially exists)
 

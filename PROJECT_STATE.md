@@ -1,8 +1,8 @@
 # PROJECT_STATE — Trading School OS
 
 Last updated: 2026-08-10 (Phase 0 discovery docs written for the "Trading X" long-term vision,
-then Phase 1's first milestone — student auth + entitlements — built and verified in the same
-session; see below and `ROADMAP.md`).
+then all of Phase 1 — student auth, entitlements, rate limiting, curriculum versioning — built
+and verified in the same session; see below and `ROADMAP.md`).
 
 Read this before starting new work — it should let a fresh session pick up without
 re-deriving context.
@@ -39,6 +39,7 @@ live.
 | Automated tests | **WORKING (minimal)** | vitest, `npm test` — 14 tests covering TF-IDF retrieval scoring and admin/student session round-trips |
 | CI | **CONFIGURED, INERT** | `.github/workflows/trading-school-ci.yml` — repo has no git remote yet, so it has never actually run |
 | Rate limiting | **WORKING** | `proxy.ts` — 10/min on `login`/`student/login`, 30/min on `api/chat`, per-IP; verified 429 after limit, page doesn't break |
+| Curriculum versioning | **WORKING** | `Course`/`Lesson`/`LessonVersion`/`Concept`; `/admin/curriculum` authoring UI; verified full create→review→publish→edit-without-disturbing-published cycle in-browser |
 
 ### Explicitly out of scope for Phase 1 (schema exists, no UI yet)
 
@@ -170,7 +171,10 @@ whenever they're ready, didn't want to auto-rename without asking).
   login-capable account (nullable passwordHash/authEnabledAt, planId → Plan); owns Notes,
   ModuleProgress, Conversations, JournalTrades (unused), CrmActivities
 - **Plan** — entitlements: name + comma-separated capabilities string; one `free` plan seeded
-- **Module** / **ModuleProgress** — curriculum + per-student progress (status + optional score)
+- **Course** / **Module** / **Lesson** / **LessonVersion** — versioned curriculum content;
+  `Lesson.status` (DRAFT/REVIEW/PUBLISHED/ARCHIVED), `currentVersionId` only repoints on publish
+- **Concept** — flat, admin-editable, implicit m2m with `Lesson` (what a lesson teaches/tests)
+- **ModuleProgress** — per-student progress against a `Module` (status + optional score)
 - **Note** — free-text CRM notes on a student, optional author, optional pinned flag
 - **CrmActivity** — lightweight activity log distinct from AuditLog (student-facing CRM
   history vs. system-wide admin audit trail)
@@ -195,11 +199,16 @@ whenever they're ready, didn't want to auto-rename without asking).
   provider; worth revisiting if real Anthropic answers start feeling slow.
 - Browser-automation clicks (`computer` tool) intermittently didn't register during manual
   testing in this environment (coordinate/compositing issue, not an app bug) — JS-dispatched
-  events were used as a fallback and confirmed every flow works. Recurred again during Phase 1
+  events were used as a fallback and confirmed every flow works. Recurred during Phase 1
   student-auth testing (2026-08-10): a click that had actually succeeded server-side (student
   record created) appeared not to on the immediately-following page-text read; a fresh navigate
   showed the correct state. Treat a `get_page_text` right after a `computer` click as possibly
-  stale — re-navigate or re-read before concluding an action failed.
+  stale — re-navigate or re-read before concluding an action failed. Recurred again, differently,
+  during curriculum-versioning testing the same day: `computer` clicks on buttons inside a native
+  `<details>` panel silently no-op'd (not a stale-read issue this time — the DB genuinely never
+  changed), while a JS-dispatched `.click()` on the real DOM button worked every time. When a
+  `computer` click against this app produces no effect at all (not just a stale read), fall back
+  to `javascript_tool` clicking the actual element before concluding the app is broken.
 - **Real bug found and fixed 2026-08-10**: `redirect()` from `next/navigation` doesn't propagate
   when called inside an awaited cross-module helper in this Next.js 16.3.0 + Turbopack setup —
   affected the pre-existing admin auth too, not just new code. Full writeup in `SECURITY.md`
@@ -217,16 +226,17 @@ whenever they're ready, didn't want to auto-rename without asking).
    wasn't derivable from the research notes at all.
 2. **Retrieval quality**: add a similarity floor (see Known issues above) once real content
    exists to tune against.
-3. **Curriculum versioning** (`CURRICULUM_SYSTEM.md`) — the one Trading X Phase 1 item still
-   unstarted; unblocks Phase 2 (assessment/progression).
-4. **Lead/sales CRM workflows** — `CrmActivity`/`Student.status`/`Student.source` are already
+3. **Lead/sales CRM workflows** — `CrmActivity`/`Student.status`/`Student.source` are already
    modeled.
-5. **Trading journal ingestion + mistake-pattern analysis** — `JournalTrade` model is ready;
+4. **Trading journal ingestion + mistake-pattern analysis** — `JournalTrade` model is ready;
    needs an upload/entry UI and an analysis pass (likely another `AiProvider`-style pluggable
    piece rather than hardcoded logic).
-6. Consider whether Next.js 16 / React 19 stay pinned as-is or get revisited once they're
+5. Consider whether Next.js 16 / React 19 stay pinned as-is or get revisited once they're
    more battle-tested — flagging only because both were bleeding-edge at scaffold time, and
    this session found one real behavioral quirk in this version (see Known issues above).
+6. **Phase 2 (assessment)**: question bank + quizzes tagged to `Concept`, then progression
+   levels/XP — see `ROADMAP.md` "Next concrete milestone." All of Phase 1 is now done, this is
+   the actual next phase of work, not a Phase-1 cleanup item.
 
 ## Next recommended task
 

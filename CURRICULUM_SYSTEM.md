@@ -1,10 +1,13 @@
 # CURRICULUM_SYSTEM — Trading X
 
-Status: Phase 0 (discovery), spec only. No real curriculum content exists anywhere on the machine
-to migrate — confirmed by filesystem search (repo, Desktop, Documents, Downloads) during the
-methodology-extraction work in `PROJECT_STATE.md`, and re-confirmed by this session's search for
-"Trading X"/"Skool" branding (no hits outside unrelated EA Box docs). This document specs the
-*system* the real curriculum will eventually live in, built in Phase 2 (see `ROADMAP.md`).
+Status: mostly built. Versioning, prerequisites (soft), and lightweight concept tagging are real
+— see `DATABASE.md` §2.2 and `app/admin/curriculum/` for the admin authoring UI, verified
+end-to-end in-browser (create → review → publish → edit-creates-new-version-without-disturbing-
+the-published-one). Adaptive sequencing and concept mastery tracking remain spec-only (Phase 2/9).
+No real curriculum *content* exists anywhere on the machine to migrate — confirmed by filesystem
+search (repo, Desktop, Documents, Downloads) during the methodology-extraction work in
+`PROJECT_STATE.md`, and re-confirmed by this session's search for "Trading X"/"Skool" branding (no
+hits outside unrelated EA Box docs) — the system is real, the content in it is still placeholder.
 
 ## Why this needs its own doc
 
@@ -81,9 +84,17 @@ meaningful bank of alternate explanations/examples per concept to already exist.
 Phase 9 (`ROADMAP.md`) deliberately — building adaptive branching logic against a curriculum that
 doesn't exist yet would be designing in a vacuum.
 
-## Admin authoring
+## Admin authoring — DONE
 
-Per brief §6/§28: curriculum must be editable through an admin interface, never hard-coded into
-the frontend. The existing `/admin/knowledge` pattern (upload/list/render, `needsReview` workflow)
-is the template to extend for lesson authoring — same review-before-publish discipline, applied to
-`Lesson.status` instead of `Document.needsReview`.
+`/admin/curriculum` (`app/admin/curriculum/`) lists modules grouped under their course, each
+lesson expandable to show status, allowed next transitions (computed from
+`allowedNextLessonStatuses()`, so the UI can never offer an invalid move), a content editor that
+creates a new version on save, and a per-module "new lesson" form. Same review-before-publish
+discipline as `/admin/knowledge`'s `needsReview` workflow, applied to `Lesson.status` instead.
+
+One UI note for future browser-based testing in this environment: the lesson rows are native
+`<details>`/`<summary>` elements, collapsed by default. The `computer` tool's coordinate-based
+clicks were unreliable against buttons inside a just-expanded `<details>` panel (silently no-op'd
+more than once during verification) — falling back to a JS-dispatched `.click()` on the actual
+DOM button (already the documented workaround in `PROJECT_STATE.md` for this tool's known
+click flakiness) worked every time and is the reliable way to test this page.

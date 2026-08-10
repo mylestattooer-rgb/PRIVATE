@@ -48,17 +48,28 @@ Built as planned: `Student` absorbed auth fields directly (nullable `passwordHas
 separately. `Plan`/`planId` also landed, seeded with one `free` plan. Migration:
 `20260810103309_add_student_auth_and_plans`.
 
-### 2.2 Curriculum (Phase 2 — depends on nothing new beyond what exists)
+### 2.2 Curriculum — mostly DONE (versioning + concept tagging; mastery tracking still pending)
 
-- **Course** — groups Modules (today's flat `Module` list becomes children of a `Course`).
-- **LessonVersion** — supersedes treating a `Module` as the atomic content unit; a `Module`
-  contains ordered `Lesson`s, each `Lesson` has versioned content (DRAFT/REVIEW/PUBLISHED/
-  ARCHIVED — see `CURRICULUM_SYSTEM.md`) so editing a lesson doesn't destroy history.
-- **Concept** — the knowledge-graph unit (brief §50); Lessons/Quizzes/ChartExercises each declare
-  which Concepts they teach or test. Deliberately simple at first (a tagged list, not a graph
-  database) — see `ROADMAP.md` Phase 9 for when this becomes a real graph.
-- **ConceptMastery** — per-student, per-concept state (NOT_INTRODUCED → ... → MASTERED per brief
-  §7), with a `lastEvidenceAt` timestamp so confidence can decay when evidence is old.
+- **Course** — groups Modules. `Module.courseId` is nullable (ungrouped modules stay valid); the
+  one seeded `Course` ("Foundations") has all 6 sample modules backfilled onto it.
+- **Lesson** / **LessonVersion** — built as specced: `Lesson` is the atomic unit within a `Module`,
+  `status` (DRAFT/REVIEW/PUBLISHED/ARCHIVED per `CURRICULUM_SYSTEM.md`), `currentVersionId` points
+  at whichever `LessonVersion` students see (only repointed on publish, per the versioning
+  guarantee). Editing creates a new `LessonVersion` and resets `status` to DRAFT without touching
+  `currentVersionId` — verified in-browser: publishing a lesson then editing it left the published
+  version intact for students while a new draft version accumulated. Soft `prerequisites`
+  self-relation exists on `Lesson` (informational only, no enforcement yet, as specced).
+  Logic lives in `app/lib/domains/learning/` (`status.ts` is a pure, unit-tested state machine;
+  `lessons.ts` is the DB-touching half — deliberately has no `import "server-only"`, since it's
+  also called from `prisma/seed.ts` which runs outside Next's bundler where that virtual module
+  doesn't resolve; see the comment there).
+- **Concept** — flat, admin-editable list as specced, implicit many-to-many with `Lesson` (a
+  concept doesn't need extra join-row fields, so no explicit join table). 3 concepts seeded,
+  tagged onto the 2 sample lessons.
+- **ConceptMastery** — **still NOT YET IMPLEMENTED** (per-student, per-concept state,
+  NOT_INTRODUCED → ... → MASTERED per brief §7) — this needs quiz/chart-exercise evidence sources
+  that don't exist yet (Phase 2 assessment), so it's deferred until there's real evidence to drive
+  it, not built as an empty shell now.
 
 ### 2.3 Assessment (Phase 2)
 

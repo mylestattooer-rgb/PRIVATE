@@ -7,6 +7,7 @@ import "dotenv/config";
 import bcrypt from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
 import { indexDocument } from "../app/lib/ai/retrieval";
+import { createLesson, addLessonVersion, transitionLessonStatus } from "../app/lib/domains/learning/lessons";
 
 const prisma = new PrismaClient();
 
@@ -57,6 +58,74 @@ async function main() {
     modules.push(mod);
   }
   console.log(`${modules.length} curriculum modules ready.`);
+
+  // --- Course wrapping the sample modules, + curriculum-versioning proof (SAMPLE) ---
+  const course = await prisma.course.upsert({
+    where: { slug: "foundations" },
+    update: {},
+    create: {
+      title: "Foundations (sample)",
+      slug: "foundations",
+      description: "Placeholder course grouping — replace with real course structure.",
+      orderIndex: 0,
+    },
+  });
+  await prisma.module.updateMany({ where: { courseId: null }, data: { courseId: course.id } });
+  console.log(`Course ready: ${course.title}, modules assigned.`);
+
+  const conceptDefs = [
+    { name: "Market Structure", slug: "market-structure", description: "Swing highs/lows and trend direction (sample)." },
+    { name: "Liquidity", slug: "liquidity", description: "Where resting orders cluster (sample)." },
+    { name: "Multi-Timeframe Alignment", slug: "mtf-alignment", description: "Using higher timeframes for bias (sample)." },
+  ];
+  const concepts = [];
+  for (const c of conceptDefs) {
+    concepts.push(await prisma.concept.upsert({ where: { slug: c.slug }, update: {}, create: c }));
+  }
+  console.log(`${concepts.length} concepts ready.`);
+
+  // Two lessons under the first module, demonstrating the full versioning
+  // workflow: one published (with a superseded draft v1 kept in history),
+  // one still in draft — so the admin UI has something real to show on
+  // first load, not an empty state.
+  const existingLessons = await prisma.lesson.count({ where: { moduleId: modules[0].id } });
+  if (existingLessons === 0) {
+    const publishedLesson = await createLesson({
+      moduleId: modules[0].id,
+      title: "What Is Market Structure? (sample)",
+      slug: "what-is-market-structure",
+      content:
+        "# What Is Market Structure? (SAMPLE)\n\n> Placeholder lesson content — not confirmed methodology.\n\nMarket structure describes the sequence of swing highs and lows that define whether price is trending up, trending down, or ranging.",
+      authorId: admin.id,
+    });
+    await addLessonVersion({
+      lessonId: publishedLesson.id,
+      content:
+        "# What Is Market Structure? (SAMPLE)\n\n> Placeholder lesson content — not confirmed methodology.\n\nMarket structure describes the sequence of swing highs and lows that define whether price is trending up, trending down, or ranging. A break of structure (BOS) is when price closes beyond a prior swing point in the direction of the trend.",
+      authorId: admin.id,
+    });
+    await transitionLessonStatus(publishedLesson.id, "REVIEW");
+    await transitionLessonStatus(publishedLesson.id, "PUBLISHED");
+    await prisma.lesson.update({
+      where: { id: publishedLesson.id },
+      data: { concepts: { connect: [{ id: concepts[0].id }] } },
+    });
+
+    const draftLesson = await createLesson({
+      moduleId: modules[0].id,
+      title: "Reading Multi-Timeframe Alignment (sample, draft)",
+      slug: "reading-mtf-alignment",
+      content:
+        "# Reading Multi-Timeframe Alignment (SAMPLE, DRAFT)\n\n> Placeholder — still being drafted, not yet reviewed.",
+      authorId: admin.id,
+    });
+    await prisma.lesson.update({
+      where: { id: draftLesson.id },
+      data: { concepts: { connect: [{ id: concepts[1].id }, { id: concepts[2].id }] } },
+    });
+
+    console.log("2 sample lessons ready (1 published, 1 draft) demonstrating curriculum versioning.");
+  }
 
   // --- Demo students ----------------------------------------------------------
   // canLogin: only ACTIVE students get a login-capable account seeded, matching
