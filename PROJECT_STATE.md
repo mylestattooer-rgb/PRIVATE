@@ -1,8 +1,8 @@
 # PROJECT_STATE — Trading School OS
 
-Last updated: 2026-08-11 (Phase 0 discovery, all of Phase 1, and all of Phase 2 as this session
-scoped it — quizzes, XP, levels, achievements, concept mastery — built and verified; see below
-and `ROADMAP.md`. Phase 3 (journal) is next).
+Last updated: 2026-08-11 (Phase 0 discovery through Phase 3 as this session scoped each phase —
+auth/entitlements, curriculum+quizzes+XP+levels+achievements+mastery, and now the trading journal
+— all built and verified; see below and `ROADMAP.md`. Phase 4 (AI Tutor upgrades) is next).
 
 Read this before starting new work — it should let a fresh session pick up without
 re-deriving context.
@@ -44,17 +44,19 @@ live.
 | XP / levels | **WORKING (basic)** | `XpEvent` append-only ledger, `Level.xpThreshold`; pure `totalXp()`/`levelForXp()`; shown on student dashboard with progress to next level |
 | Achievements | **WORKING (one)** | `Achievement`/`UserAchievement`, unlocked server-side inside the grading transaction; `FIRST_QUIZ_PASSED` seeded and verified unlocking + displaying on dashboard |
 | Concept mastery | **WORKING** | `ConceptMastery`, driven by `QuestionAttempt` evidence via pure `applyMasteryEvidence()`; verified NOT_INTRODUCED→LEARNING transition on a fresh correct answer, shown on student dashboard |
+| Trading journal | **WORKING** | `/student/journal` — create/delete trades, deterministic stats (win rate, avg R, best/worst setup, top mistake); data isolation verified (a second student's journal correctly showed empty) |
+| Journal AI insights | **WORKING (deterministic)** | `AiInsight`, evidence-linked to the trades it summarizes; gated at 5 trades minimum (never manufactures a conclusion from too little data); text is template-based today, not yet routed through `app/lib/ai/provider.ts` — see `DATABASE.md` §2.4 |
 
-### Explicitly out of scope for Phase 1 (schema exists, no UI yet)
+### Still out of scope (schema exists for some, no UI yet)
 
 Marked **NOT YET IMPLEMENTED** — nav shows them as "Coming soon" stubs so the intended full
-platform shape is visible without pretending they work:
+platform shape is visible without pretending they work. (Trading journal and quizzing, formerly
+listed here, are now built — see the table above.)
 
 - **Lead/sales CRM workflows** — `CrmActivity` model exists, only written to by student
   status changes so far; no dedicated lead pipeline UI, no automated follow-ups
-- **Trading journal analysis** — `JournalTrade` model exists in the schema, unused; no
-  ingestion, no pattern/mistake analysis
-- **Quizzing / weak-area detection** — no model, no UI
+- **AI Tutor, student-facing** — the AI chat exists but is admin-only (`/admin/chat`); a
+  student-facing version with Socratic Chart Lab behavior is Phase 4/5 (`AI_ARCHITECTURE.md`)
 - **Automations** (inactivity detection, automated emails, escalation to human) — `Approval`
   model exists for the human-approval gate this would need, but nothing produces approval
   requests yet
@@ -173,7 +175,8 @@ whenever they're ready, didn't want to auto-rename without asking).
 - **AdminUser** — email/passwordHash/name/role; owns Notes, AuditLog entries, Approvals
 - **Student** — CRM record (status: LEAD/TRIAL/ACTIVE/PAUSED/CHURNED, source, timestamps) **and**
   login-capable account (nullable passwordHash/authEnabledAt, planId → Plan); owns Notes,
-  ModuleProgress, Conversations, JournalTrades (unused), CrmActivities
+  ModuleProgress, Conversations, JournalTrades, CrmActivities, QuestionAttempts, XpEvents,
+  UserAchievements, ConceptMasteries, AiInsights
 - **Plan** — entitlements: name + comma-separated capabilities string; one `free` plan seeded
 - **Course** / **Module** / **Lesson** / **LessonVersion** — versioned curriculum content;
   `Lesson.status` (DRAFT/REVIEW/PUBLISHED/ARCHIVED), `currentVersionId` only repoints on publish
@@ -193,7 +196,9 @@ whenever they're ready, didn't want to auto-rename without asking).
   "Methodology extraction" above), `status` (PROCESSING/READY/ERROR)
 - **Conversation** / **Message** / **Citation** — AI chat history; `Citation` is the join
   linking an assistant `Message` to the `DocumentChunk`(s) it cited, with a similarity score
-- **JournalTrade** — schema ready for trading-journal analysis, not yet wired to any UI
+- **JournalTrade** — student-owned trade log, writable from `/student/journal`
+- **AiInsight** — evidence-linked pattern observations over a student's own `JournalTrade`s,
+  m2m to the trades it summarizes; kept structurally separate from `JournalTrade.notes`
 - **AuditLog** — system-wide action log (every login, AI query/response, student/doc mutation)
 - **Approval** — human-approval gate for sensitive AI-proposed actions; schema exists, nothing
   writes to it yet since no automation feature produces approval requests in Phase 1
@@ -224,6 +229,13 @@ whenever they're ready, didn't want to auto-rename without asking).
   affected the pre-existing admin auth too, not just new code. Full writeup in `SECURITY.md`
   "Known Next.js 16 redirect quirk". Only caught by in-browser verification; a unit test with a
   mocked `redirect()` would have (and initially did) hidden it.
+- **Turbopack stale route cache produced a false 404** (2026-08-11): a brand-new route
+  (`/student/journal`) 404'd on first load even though the file existed at the correct path and
+  compiled without error in the server log. `rm -rf .next` + restarting the dev server fixed it
+  immediately. Not the first time a stale `.next/dev` cache has caused a misleading symptom in
+  this environment this session — if a route/behavior looks wrong right after adding new files or
+  killing a dev server abruptly, clear `.next` and restart before spending time debugging the
+  application code.
 
 ## Outstanding tasks (recommended order)
 
@@ -238,18 +250,18 @@ whenever they're ready, didn't want to auto-rename without asking).
    exists to tune against.
 3. **Lead/sales CRM workflows** — `CrmActivity`/`Student.status`/`Student.source` are already
    modeled.
-4. **Trading journal ingestion + mistake-pattern analysis** — `JournalTrade` model is ready;
-   needs an upload/entry UI and an analysis pass (likely another `AiProvider`-style pluggable
-   piece rather than hardcoded logic).
-5. Consider whether Next.js 16 / React 19 stay pinned as-is or get revisited once they're
+4. Consider whether Next.js 16 / React 19 stay pinned as-is or get revisited once they're
    more battle-tested — flagging only because both were bleeding-edge at scaffold time, and
-   this session found one real behavioral quirk in this version (see Known issues above).
-6. **Randomized question pools** (`DATABASE.md` §2.3, brief §53) — no anti-cheating yet; fine with
+   this session found real behavioral quirks in this version (see Known issues above).
+5. **Randomized question pools** (`DATABASE.md` §2.3, brief §53) — no anti-cheating yet; fine with
    one-to-two questions per lesson, a real gap once lessons have enough questions for order to
    matter.
-7. **Phase 3 (journal)** — `JournalTrade` model has existed since Phase 0, still unused; UI +
-   writes + an `AiInsight` table (`DATABASE.md` §2.4) are next. All of Phase 2 (quizzes, XP,
-   levels, achievements, concept mastery) is now done — see `ROADMAP.md`.
+6. **Wire `AiInsight` to the real `AiProvider`** (`DATABASE.md` §2.4) — currently deterministic
+   template text; swapping in real phrasing is additive, not urgent while mock-mode is the
+   default provider anyway.
+7. **Phase 4 (AI Tutor upgrades)** — student-facing AI chat (today's is admin-only), knowledge
+   trust levels (A-D), Socratic Chart Lab behavior. All of Phases 1-3 are now done — see
+   `ROADMAP.md`.
 
 ## Next recommended task
 

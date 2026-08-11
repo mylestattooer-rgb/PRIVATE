@@ -72,6 +72,7 @@ model Student {
   xpEvents         XpEvent[]
   achievements     UserAchievement[]
   conceptMasteries ConceptMastery[]
+  aiInsights       AiInsight[]
 }
 
 // --- Entitlements (ARCHITECTURE.md "central entitlements module") ----------
@@ -455,7 +456,27 @@ model JournalTrade {
   tradedAt   DateTime
   createdAt  DateTime @default(now())
 
-  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  student  Student     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  insights AiInsight[]
+}
+
+// Evidence-linked pattern observations over a student's own journal, kept in
+// a separate table from JournalTrade.notes (the student's own words) so an
+// AI-generated observation can never silently overwrite a student's own
+// reflection — brief §14/§15's requirement enforced at the schema level, not
+// just a UI convention. `provider` records what actually generated the text
+// (see app/lib/domains/journal/insights.ts — deterministic pattern text
+// today, not yet wired to the AiProvider interface used elsewhere; see that
+// file's header comment for why).
+model AiInsight {
+  id        String   @id @default(cuid())
+  studentId String
+  summary   String
+  provider  String
+  createdAt DateTime @default(now())
+
+  student Student        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  trades  JournalTrade[]
 }
 
 // --- Audit / approvals ---------------------------------------------------------

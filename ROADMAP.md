@@ -71,11 +71,21 @@ pure (grading equality, XP summation, level lookup, achievement conditions, mast
 3. A second achievement + a second level-contributing XP source, to prove the pattern generalizes
    before investing in the richer multi-condition Level rule engine the brief eventually wants.
 
-## Phase 3 — Journal: NOT STARTED (schema partially exists)
+## Phase 3 — Journal: DONE (to the depth this session scoped it)
 
-`JournalTrade` schema exists, zero UI, zero writes (`PROJECT_STATE.md` Outstanding task #5).
-Student journal UI + `AiInsight` table (`DATABASE.md` §2.4) + reflection workflow. Depends on
-Phase 1's student auth (journal entries are student-owned, private by default).
+`JournalTrade` writable from `/student/journal` (create/delete, student-data-isolated); deterministic
+stats (win rate, avg R, best/worst setup tag, most common mistake — `app/lib/domains/journal/stats.ts`,
+pure/unit-tested); `AiInsight` generation gated at `MIN_TRADES_FOR_INSIGHT = 5`, evidence-linked to
+the exact trades it summarizes (`DATABASE.md` §2.4 has the full writeup, including why the insight
+text is deterministic-template today rather than routed through the AI provider).
+
+Verified end-to-end in-browser: seeded 6 sample trades + 1 generated insight for one student;
+added a new trade and deleted one via the real UI, both round-tripped to the DB correctly; a
+second student's journal correctly showed empty (0 trades), confirming data isolation.
+
+**Not built (correctly deferred, not a gap)**: reflection *workflow* beyond free-text notes (no
+prompted reflection questions yet), broker-imported trades (brief §14's third provenance —
+manual/simulator/broker — only manual exists, simulator doesn't exist until Phase 6).
 
 ## Phase 4 — AI Tutor (Trading X methodology): PARTIALLY DONE
 

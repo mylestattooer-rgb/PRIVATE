@@ -96,13 +96,24 @@ separately. `Plan`/`planId` also landed, seeded with one `free` plan. Migration:
   structure, find a sweep, etc.) + student's submitted answer, references `Concept`s tested. Needs
   Chart Lab (Phase 5) infrastructure (image handling) that doesn't exist yet.
 
-### 2.4 Journal intelligence (Phase 3)
+### 2.4 Journal intelligence — DONE (deterministic version; not yet AI-phrased)
 
-- No new tables needed beyond making `JournalTrade` writable from a real UI. Add an `AiInsight`
-  table (student-scoped, evidence-linked — each insight row references the `JournalTrade`(s) that
-  produced it) so AI-generated pattern observations stay clearly separate from `JournalTrade.notes`
-  (student's own words) — brief §14/§15's "AI must never overwrite student reflections" becomes a
-  schema-level guarantee, not just a UI convention.
+- `JournalTrade` is writable from a real UI (`/student/journal`) — create/delete, scoped by
+  studentId at the query layer (`app/lib/domains/journal/journal.ts`'s `deleteTrade` takes
+  studentId as a mandatory filter, not trusted from the caller). `AiInsight` is built exactly as
+  specced: student-scoped, evidence-linked via an explicit m2m to the `JournalTrade` rows it was
+  computed from, kept structurally separate from `JournalTrade.notes` so an insight can never
+  overwrite a student's own words.
+- **Naming note**: the *insight text* is currently template-based deterministic output (see
+  `app/lib/domains/journal/insights.ts`'s header comment), not a call through
+  `app/lib/ai/provider.ts` — `AiInsight.provider` is stored as `"deterministic"`, matching the
+  `Message.provider` field's existing precedent of recording what actually generated content.
+  Swapping in real AI phrasing later is additive (new provider value, same schema); not done now
+  because it would add a mock-mode caveat for zero behavioral difference until there's a reason to
+  want richer phrasing than the template gives.
+- Enforces brief §15's "do not manufacture behavioural conclusions from insufficient data":
+  `MIN_TRADES_FOR_INSIGHT = 5` gates generation entirely — below that, `generateInsightText()`
+  returns `null` rather than a low-confidence guess.
 
 ### 2.5 Progression / gamification — Level/XP/Achievement DONE, Challenge still pending
 

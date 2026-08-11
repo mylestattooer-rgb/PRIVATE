@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { getStudentSession } from "@/app/lib/auth";
 import { studentLogoutAction } from "./actions";
 
@@ -18,11 +19,22 @@ export default async function StudentLayout({ children }: { children: React.Reac
         </div>
 
         <nav className="flex flex-1 flex-col gap-1">
-          <span className="rounded-md bg-neutral-800 px-3 py-2 text-sm text-white">Dashboard</span>
+          <Link
+            href="/student"
+            className="rounded-md px-3 py-2 text-sm text-neutral-300 transition hover:bg-neutral-800 hover:text-white"
+          >
+            Dashboard
+          </Link>
+          <Link
+            href="/student/journal"
+            className="rounded-md px-3 py-2 text-sm text-neutral-300 transition hover:bg-neutral-800 hover:text-white"
+          >
+            Journal
+          </Link>
           <p className="mt-6 px-3 text-xs font-medium uppercase tracking-wide text-neutral-600">
             Coming soon
           </p>
-          {["AI Tutor", "Journal", "Chart Lab"].map((label) => (
+          {["AI Tutor", "Chart Lab"].map((label) => (
             <span
               key={label}
               className="cursor-default rounded-md px-3 py-2 text-sm text-neutral-600"

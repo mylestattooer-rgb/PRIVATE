@@ -10,6 +10,7 @@ import { indexDocument } from "../app/lib/ai/retrieval";
 import { createLesson, addLessonVersion, transitionLessonStatus } from "../app/lib/domains/learning/lessons";
 import { createQuestion } from "../app/lib/domains/assessment/questions";
 import { ACHIEVEMENT_KEYS } from "../app/lib/domains/progression/achievements";
+import { createTrade, generateInsight } from "../app/lib/domains/journal/journal";
 
 const prisma = new PrismaClient();
 
@@ -261,6 +262,27 @@ async function main() {
       { studentId: tom.id, type: "STATUS_CHANGE", summary: "Status changed to PAUSED" },
     ],
   });
+
+  // --- Trading journal (Phase 3, sample) — enough trades to clear
+  // MIN_TRADES_FOR_INSIGHT so the seeded demo can show a real generated
+  // insight, not just an empty state.
+  const existingTradeCount = await prisma.journalTrade.count({ where: { studentId: ava.id } });
+  if (existingTradeCount === 0) {
+    const day = (offset: number) => new Date(Date.now() - offset * 24 * 60 * 60 * 1000);
+    const sampleTrades = [
+      { symbol: "XAUUSD", direction: "long", result: "win", rMultiple: 2.1, setupTag: "displacement+FVG", tradedAt: day(1) },
+      { symbol: "XAUUSD", direction: "long", result: "win", rMultiple: 1.8, setupTag: "displacement+FVG", tradedAt: day(3) },
+      { symbol: "XAUUSD", direction: "short", result: "loss", rMultiple: -1, setupTag: "liquidity sweep", mistakeTag: "early entry", tradedAt: day(5) },
+      { symbol: "XAUUSD", direction: "short", result: "loss", rMultiple: -1, setupTag: "liquidity sweep", mistakeTag: "early entry", tradedAt: day(7) },
+      { symbol: "XAUUSD", direction: "long", result: "win", rMultiple: 3, setupTag: "displacement+FVG", tradedAt: day(9) },
+      { symbol: "XAUUSD", direction: "long", result: "breakeven", rMultiple: 0, setupTag: "displacement+FVG", tradedAt: day(11) },
+    ];
+    for (const t of sampleTrades) {
+      await createTrade({ studentId: ava.id, notes: "Sample journal entry (placeholder).", ...t });
+    }
+    const insight = await generateInsight(ava.id);
+    console.log(`${sampleTrades.length} sample journal trades ready.${insight ? " 1 sample insight generated." : ""}`);
+  }
 
   // --- Sample knowledge base documents (clearly labeled placeholder content) --
   const sampleDocs = [
