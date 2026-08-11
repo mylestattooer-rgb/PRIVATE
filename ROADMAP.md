@@ -42,18 +42,32 @@ first written — every brief-listed Phase 1 item is now DONE. `app/lib/domains/
 lesson-versioning logic (`status.ts` pure state machine, unit-tested; `lessons.ts` the DB half);
 22 tests total now (up from 14).
 
-**Phase 1 is complete. Next concrete milestone (starts Phase 2):**
-1. Question bank + quizzes, tagged to `Concept` (already exists) — the first piece of real
-   assessment, and what `ConceptMastery` (`DATABASE.md` §2.2) needs before it can track anything.
-2. Progression levels / XP scaffolding (`DATABASE.md` §2.5) — admin-configurable per the brief,
-   deterministic evaluation per `AI_ARCHITECTURE.md`'s determinism boundary.
-3. Continue expanding the test suite as each new domain lands — 22 tests is a floor, not a target.
+Phase 1 is complete. Phase 2's first slice (quizzes, XP, levels, achievements) landed the same
+day — see the Phase 2 section below for what's built and what's next.
 
-## Phase 2 — Assessment: NOT STARTED
+## Phase 2 — Assessment: FIRST SLICE DONE
 
-Quizzes, question banks, concept mapping (lightweight version now built, see `CURRICULUM_SYSTEM.md`
-and `DATABASE.md` §2.2), progression levels, achievements, XP. Phase 1's student auth +
-entitlements + curriculum versioning are all in place to build this on.
+| Item | Status |
+|---|---|
+| Concept mapping | **DONE** (Phase 1) — flat, admin-editable, tagged onto Lessons and Questions |
+| Question bank + quizzes | **DONE (basic)** — `Question`/`QuestionAttempt`, deterministic grading (`app/lib/domains/assessment/questions.ts`), student-facing quiz UI at `/student/lessons/[id]`, admin authoring in `/admin/curriculum`. **Not built**: randomized question pools/anti-cheating (brief §53) |
+| Progression levels / XP | **DONE (basic)** — `Level`/`XpEvent`, pure `totalXp()`/`levelForXp()` (`app/lib/domains/progression/`), shown on student dashboard. 4 levels seeded (0/50/150/300 XP). **Not built**: multi-condition level requirements (brief §5 wants lessons+quizzes+simulator combined — only quiz XP feeds it so far) |
+| Achievements | **DONE (one)** — `Achievement`/`UserAchievement`, server-side-only unlock inside the grading transaction. One achievement (`FIRST_QUIZ_PASSED`) as proof of pattern |
+| Challenges | **NOT STARTED** — needs more evidence sources (journal, simulator) to be meaningful |
+| ConceptMastery | **NOT STARTED** — `DATABASE.md` §2.2; now has real evidence (QuestionAttempt) to drive it, this is the natural next piece |
+
+Verified end-to-end in-browser: correct answer → +10 XP, level progress bar updates, achievement
+unlocks and shows on dashboard; incorrect answer → 0 XP, no achievement, "not quite" feedback
+with explanation; admin can add a question to a lesson and it appears correctly for students.
+34 tests total now (up from 22) — `app/lib/domains/progression/` and `assessment/` both unit-tested
+where the logic is pure (grading equality, XP summation, level lookup, achievement conditions).
+
+**Next concrete milestone:**
+1. `ConceptMastery` (`DATABASE.md` §2.2) — now that `QuestionAttempt` provides real evidence,
+   this is buildable without designing in a vacuum.
+2. Randomized question selection (brief §53) once a lesson has enough questions for it to matter.
+3. A second achievement + a second level-contributing XP source, to prove the pattern generalizes
+   before investing in the richer multi-condition Level rule engine the brief eventually wants.
 
 ## Phase 3 — Journal: NOT STARTED (schema partially exists)
 

@@ -22,7 +22,7 @@ export default async function StudentLayout({ children }: { children: React.Reac
           <p className="mt-6 px-3 text-xs font-medium uppercase tracking-wide text-neutral-600">
             Coming soon
           </p>
-          {["Lessons", "AI Tutor", "Journal", "Chart Lab"].map((label) => (
+          {["AI Tutor", "Journal", "Chart Lab"].map((label) => (
             <span
               key={label}
               className="cursor-default rounded-md px-3 py-2 text-sm text-neutral-600"

@@ -63,11 +63,14 @@ model Student {
   planId String?
   plan   Plan?   @relation(fields: [planId], references: [id])
 
-  notes         Note[]
-  progress      ModuleProgress[]
-  conversations Conversation[]
-  journalTrades JournalTrade[]
-  crmActivities CrmActivity[]
+  notes            Note[]
+  progress         ModuleProgress[]
+  conversations    Conversation[]
+  journalTrades    JournalTrade[]
+  crmActivities    CrmActivity[]
+  questionAttempts QuestionAttempt[]
+  xpEvents         XpEvent[]
+  achievements     UserAchievement[]
 }
 
 // --- Entitlements (ARCHITECTURE.md "central entitlements module") ----------
@@ -142,9 +145,10 @@ model Lesson {
   currentVersionId String?
   currentVersion   LessonVersion? @relation("CurrentVersion", fields: [currentVersionId], references: [id])
 
-  versions LessonVersion[] @relation("LessonVersions")
-  module   Module          @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-  concepts Concept[]
+  versions  LessonVersion[] @relation("LessonVersions")
+  module    Module          @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  concepts  Concept[]
+  questions Question[]
 
   // Soft prerequisites only (CURRICULUM_SYSTEM.md "Prerequisites") — informational,
   // not enforced/gated in the UI yet.
@@ -179,7 +183,8 @@ model Concept {
   description String?
   createdAt   DateTime @default(now())
 
-  lessons Lesson[]
+  lessons   Lesson[]
+  questions Question[]
 }
 
 enum ProgressStatus {
@@ -201,6 +206,87 @@ model ModuleProgress {
   module  Module  @relation(fields: [moduleId], references: [id], onDelete: Cascade)
 
   @@unique([studentId, moduleId])
+}
+
+// --- Assessment (Phase 2, DATABASE.md §2.3) ---------------------------------
+
+model Question {
+  id           String   @id @default(cuid())
+  lessonId     String
+  prompt       String
+  choices      String // JSON-encoded string[] — freeform count, not fixed at 4
+  correctIndex Int
+  explanation  String?
+  createdAt    DateTime @default(now())
+
+  lesson   Lesson            @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  concepts Concept[]
+  attempts QuestionAttempt[]
+}
+
+model QuestionAttempt {
+  id            String   @id @default(cuid())
+  studentId     String
+  questionId    String
+  selectedIndex Int
+  correct       Boolean
+  attemptedAt   DateTime @default(now())
+
+  student  Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+}
+
+// --- Progression (Phase 2, DATABASE.md §2.5) --------------------------------
+
+model Level {
+  id          String   @id @default(cuid())
+  name        String
+  orderIndex  Int      @default(0)
+  // A student's level is whichever Level has the highest xpThreshold <= their
+  // total XP (see app/lib/domains/progression/level.ts) — admin-configurable
+  // without a code change, per brief §5's explicit requirement.
+  xpThreshold Int      @unique
+  description String?
+  createdAt   DateTime @default(now())
+}
+
+// Append-only ledger, not a mutable running total column — makes XP
+// auditable and abuse-detectable (brief §19), and a student's total is
+// always a SUM query over real events, never a value that can drift from
+// its own history. See app/lib/domains/progression/xp.ts.
+model XpEvent {
+  id        String   @id @default(cuid())
+  studentId String
+  source    String // e.g. "QUIZ_CORRECT" — freeform, not an enum, so new sources need no migration
+  amount    Int
+  createdAt DateTime @default(now())
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+}
+
+model Achievement {
+  id          String   @id @default(cuid())
+  key         String   @unique // e.g. "FIRST_QUIZ_PASSED" — stable identifier the deterministic checker code references
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+
+  unlockedBy UserAchievement[]
+}
+
+// Achievements are validated server-side only (brief §18) — this table is
+// only ever written by app/lib/domains/progression's deterministic checker
+// functions, never by a client-reported "I did this" flag.
+model UserAchievement {
+  id            String   @id @default(cuid())
+  studentId     String
+  achievementId String
+  unlockedAt    DateTime @default(now())
+
+  student     Student     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  achievement Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, achievementId])
 }
 
 // --- Notes / CRM activity ---------------------------------------------------
@@ -352,6 +438,7 @@ enum AuditAction {
   LESSON_CREATED
   LESSON_UPDATED
   LESSON_PUBLISHED
+  QUESTION_CREATED
 }
 
 model AuditLog {

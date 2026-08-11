@@ -1,6 +1,11 @@
 import { prisma } from "@/app/lib/db";
 import { allowedNextLessonStatuses, type LessonStatusValue } from "@/app/lib/domains/learning/status";
-import { createLessonAction, addLessonVersionAction, transitionLessonAction } from "./actions";
+import {
+  createLessonAction,
+  addLessonVersionAction,
+  transitionLessonAction,
+  createQuestionAction,
+} from "./actions";
 
 const STATUS_STYLE: Record<LessonStatusValue, string> = {
   DRAFT: "bg-neutral-800 text-neutral-300",
@@ -22,7 +27,10 @@ export default async function CurriculumPage() {
     include: {
       lessons: {
         orderBy: { orderIndex: "asc" },
-        include: { versions: { orderBy: { version: "desc" }, take: 1 } },
+        include: {
+          versions: { orderBy: { version: "desc" }, take: 1 },
+          questions: { orderBy: { createdAt: "asc" } },
+        },
       },
     },
   });
@@ -92,6 +100,74 @@ export default async function CurriculumPage() {
                           Save new version
                         </button>
                       </form>
+
+                      <div className="border-t border-neutral-800 pt-4">
+                        <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">
+                          Quiz questions ({lesson.questions.length})
+                        </p>
+                        <ul className="mt-2 space-y-2">
+                          {lesson.questions.map((q) => {
+                            const choices: string[] = JSON.parse(q.choices);
+                            return (
+                              <li key={q.id} className="rounded-md border border-neutral-800 bg-neutral-950 p-3">
+                                <p className="text-sm text-neutral-200">{q.prompt}</p>
+                                <ul className="mt-1 space-y-0.5">
+                                  {choices.map((c, i) => (
+                                    <li
+                                      key={i}
+                                      className={`text-xs ${
+                                        i === q.correctIndex ? "text-emerald-400" : "text-neutral-500"
+                                      }`}
+                                    >
+                                      {i === q.correctIndex ? "✓ " : "· "}
+                                      {c}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </li>
+                            );
+                          })}
+                        </ul>
+
+                        <details className="mt-3">
+                          <summary className="cursor-pointer text-xs text-neutral-400">+ New question</summary>
+                          <form action={createQuestionAction} className="mt-2 space-y-2">
+                            <input type="hidden" name="lessonId" value={lesson.id} />
+                            <input
+                              name="prompt"
+                              required
+                              placeholder="Question prompt"
+                              className="w-full rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-emerald-500"
+                            />
+                            <textarea
+                              name="choices"
+                              rows={4}
+                              required
+                              placeholder={"One choice per line, at least 2\ne.g.\nUp\nDown\nSideways"}
+                              className="w-full rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-emerald-500"
+                            />
+                            <input
+                              name="correctIndex"
+                              type="number"
+                              min={0}
+                              required
+                              placeholder="Correct choice number (0 = first line)"
+                              className="w-full rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-emerald-500"
+                            />
+                            <input
+                              name="explanation"
+                              placeholder="Explanation shown after answering (optional)"
+                              className="w-full rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-emerald-500"
+                            />
+                            <button
+                              type="submit"
+                              className="rounded-md bg-neutral-800 px-3 py-1.5 text-xs font-medium text-neutral-100 hover:bg-neutral-700"
+                            >
+                              Add question
+                            </button>
+                          </form>
+                        </details>
+                      </div>
                     </div>
                   </details>
                 );

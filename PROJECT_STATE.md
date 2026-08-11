@@ -1,8 +1,8 @@
 # PROJECT_STATE — Trading School OS
 
-Last updated: 2026-08-10 (Phase 0 discovery docs written for the "Trading X" long-term vision,
-then all of Phase 1 — student auth, entitlements, rate limiting, curriculum versioning — built
-and verified in the same session; see below and `ROADMAP.md`).
+Last updated: 2026-08-11 (Phase 0 discovery, all of Phase 1 — student auth, entitlements, rate
+limiting, curriculum versioning — and Phase 2's first slice — quizzes, XP, levels, achievements —
+all built and verified across two sessions; see below and `ROADMAP.md`).
 
 Read this before starting new work — it should let a fresh session pick up without
 re-deriving context.
@@ -40,6 +40,9 @@ live.
 | CI | **CONFIGURED, INERT** | `.github/workflows/trading-school-ci.yml` — repo has no git remote yet, so it has never actually run |
 | Rate limiting | **WORKING** | `proxy.ts` — 10/min on `login`/`student/login`, 30/min on `api/chat`, per-IP; verified 429 after limit, page doesn't break |
 | Curriculum versioning | **WORKING** | `Course`/`Lesson`/`LessonVersion`/`Concept`; `/admin/curriculum` authoring UI; verified full create→review→publish→edit-without-disturbing-published cycle in-browser |
+| Quizzes | **WORKING (basic)** | `Question`/`QuestionAttempt`, deterministic grading; student quiz UI at `/student/lessons/[id]`, admin authoring at `/admin/curriculum`; verified correct (+XP, achievement) and incorrect (no XP, feedback shown) paths |
+| XP / levels | **WORKING (basic)** | `XpEvent` append-only ledger, `Level.xpThreshold`; pure `totalXp()`/`levelForXp()`; shown on student dashboard with progress to next level |
+| Achievements | **WORKING (one)** | `Achievement`/`UserAchievement`, unlocked server-side inside the grading transaction; `FIRST_QUIZ_PASSED` seeded and verified unlocking + displaying on dashboard |
 
 ### Explicitly out of scope for Phase 1 (schema exists, no UI yet)
 
@@ -173,7 +176,11 @@ whenever they're ready, didn't want to auto-rename without asking).
 - **Plan** — entitlements: name + comma-separated capabilities string; one `free` plan seeded
 - **Course** / **Module** / **Lesson** / **LessonVersion** — versioned curriculum content;
   `Lesson.status` (DRAFT/REVIEW/PUBLISHED/ARCHIVED), `currentVersionId` only repoints on publish
-- **Concept** — flat, admin-editable, implicit m2m with `Lesson` (what a lesson teaches/tests)
+- **Concept** — flat, admin-editable, implicit m2m with `Lesson`/`Question` (what they teach/test)
+- **Question** / **QuestionAttempt** — quiz questions (JSON-encoded choices, deterministic
+  `correctIndex`) + per-student graded attempts
+- **Level** / **XpEvent** / **Achievement** / **UserAchievement** — progression: XP is a summed
+  append-only ledger, level is an XP-threshold lookup, achievements unlock server-side only
 - **ModuleProgress** — per-student progress against a `Module` (status + optional score)
 - **Note** — free-text CRM notes on a student, optional author, optional pinned flag
 - **CrmActivity** — lightweight activity log distinct from AuditLog (student-facing CRM
@@ -234,9 +241,10 @@ whenever they're ready, didn't want to auto-rename without asking).
 5. Consider whether Next.js 16 / React 19 stay pinned as-is or get revisited once they're
    more battle-tested — flagging only because both were bleeding-edge at scaffold time, and
    this session found one real behavioral quirk in this version (see Known issues above).
-6. **Phase 2 (assessment)**: question bank + quizzes tagged to `Concept`, then progression
-   levels/XP — see `ROADMAP.md` "Next concrete milestone." All of Phase 1 is now done, this is
-   the actual next phase of work, not a Phase-1 cleanup item.
+6. **`ConceptMastery`** (`DATABASE.md` §2.2) — `QuestionAttempt` now provides real evidence to
+   drive this; was deferred until there was something real to evaluate against, which is now true.
+7. **Randomized question pools** (`DATABASE.md` §2.3, brief §53) — no anti-cheating yet; fine with
+   one question per lesson, a real gap once lessons have enough questions for order to matter.
 
 ## Next recommended task
 

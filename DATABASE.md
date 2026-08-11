@@ -1,22 +1,28 @@
 # DATABASE — Trading X
 
-Status: mixed. Section 1 describes the schema as it exists today (authoritative source:
-`prisma/schema.prisma`) — this now includes student auth + entitlements (§2.1's plan), built as
-Phase 1's first milestone in the same session this doc was first written. The rest of section 2
-remains a planned evolution — **nothing else in section 2 is implemented yet**.
+Status: mixed, and this doc now spans several build sessions (2026-08-10 through 2026-08-11) —
+Phase 1 (student auth, entitlements, curriculum versioning) and Phase 2's first slice (quizzes,
+XP, levels, achievements) are all real. Section 1 describes the schema as it exists today
+(authoritative source: `prisma/schema.prisma`). Section 2 is what's left of the original planned
+evolution — each subsection now says DONE/partial/NOT YET IMPLEMENTED rather than being uniformly
+aspirational.
 
 ## 1. Current schema (implemented)
 
 - **AdminUser** — email/passwordHash/name, role (ADMIN/STAFF).
 - **Student** — CRM record (name/email/phone, status LEAD→TRIAL→ACTIVE→PAUSED→CHURNED, source,
   joinedAt/lastActiveAt) **and** login-capable account: nullable `passwordHash`/`authEnabledAt`
-  (both null = CRM lead, no login provisioned yet — resolves the question originally left open
-  below) plus `planId` → `Plan`. Owns Notes, ModuleProgress, Conversations, JournalTrades,
-  CrmActivities.
+  (both null = CRM lead, no login provisioned yet) plus `planId` → `Plan`. Owns Notes,
+  ModuleProgress, Conversations, JournalTrades, CrmActivities, QuestionAttempts, XpEvents,
+  UserAchievements.
 - **Plan** — entitlements: `name` + comma-separated `capabilities` string (see
   `app/lib/domains/entitlements/`). One `free` plan seeded so far, granting `USE_AI_TUTOR`.
-- **Module** / **ModuleProgress** — flat curriculum unit + per-student status/score. No
-  versioning, no prerequisites, no content-type modeling beyond what's rendered as markdown.
+- **Course** / **Module** / **Lesson** / **LessonVersion** — versioned curriculum (§2.2 below has
+  the full writeup). `Module` still carries `ModuleProgress` for coarse per-module status/score;
+  `Lesson` is the newer, versioned, publishable unit within a module.
+- **Concept** — flat, admin-editable tag list, implicit m2m with both `Lesson` and `Question`.
+- **Question** / **QuestionAttempt** — quiz questions and per-student attempts (§2.3 below).
+- **Level** / **XpEvent** / **Achievement** / **UserAchievement** — progression (§2.5 below).
 - **Note** — free-text CRM notes on a student, optional author, optional pinned flag.
 - **CrmActivity** — lightweight student-facing activity log, distinct from `AuditLog` (system-wide
   admin audit trail).
@@ -71,12 +77,18 @@ separately. `Plan`/`planId` also landed, seeded with one `free` plan. Migration:
   that don't exist yet (Phase 2 assessment), so it's deferred until there's real evidence to drive
   it, not built as an empty shell now.
 
-### 2.3 Assessment (Phase 2)
+### 2.3 Assessment — partially DONE (basic quizzes; randomization/anti-cheating still pending)
 
-- **Question** / **QuestionAttempt** — quiz question bank + per-student attempts, randomized
-  selection from a pool (anti-cheating, brief §53).
-- **ChartExercise** / **ChartAnswer** — a chart + task (mark structure, find a sweep, etc.) +
-  student's submitted answer, references `Concept`s tested.
+- **Question** / **QuestionAttempt** — built: `Question.choices` is a JSON-encoded string array
+  (freeform count, not fixed at 4), `correctIndex` is the deterministic answer key, tagged to
+  `Concept`s. Grading (`app/lib/domains/assessment/questions.ts`'s `gradeAttempt()`) is plain index
+  equality — never AI judgment, per `AI_ARCHITECTURE.md`'s determinism boundary. **Not yet built**:
+  randomized question selection from a pool (anti-cheating, brief §53) — today a lesson's questions
+  are always shown in full and in the same order; fine for the current single-question demo lesson,
+  a real gap once a lesson has enough questions that order/subset matters.
+- **ChartExercise** / **ChartAnswer** — **still NOT YET IMPLEMENTED** — a chart + task (mark
+  structure, find a sweep, etc.) + student's submitted answer, references `Concept`s tested. Needs
+  Chart Lab (Phase 5) infrastructure (image handling) that doesn't exist yet.
 
 ### 2.4 Journal intelligence (Phase 3)
 
@@ -86,16 +98,26 @@ separately. `Plan`/`planId` also landed, seeded with one `free` plan. Migration:
   (student's own words) — brief §14/§15's "AI must never overwrite student reflections" becomes a
   schema-level guarantee, not just a UI convention.
 
-### 2.5 Progression / gamification (Phase 2-3)
+### 2.5 Progression / gamification — Level/XP/Achievement DONE, Challenge still pending
 
-- **Level** — admin-configurable (per brief §5: level names/requirements must be editable without
-  code changes), references a set of requirement rules (JSON-encoded, evaluated by deterministic
-  code per `AI_ARCHITECTURE.md`'s determinism boundary).
-- **XpEvent** — append-only ledger (source type + amount + studentId + timestamp), not a mutable
-  running total column — makes XP auditable and abuse-detectable (brief §19's anti-farming
-  requirement needs to see the event history, not just a current total).
-- **Challenge** / **ChallengeProgress**, **Achievement** / **UserAchievement** — achievements
-  validated server-side only (brief §18), never a client-reported "I did this" flag.
+- **Level** — built, but simpler than originally planned: a single `xpThreshold: Int` (unique)
+  rather than a JSON-encoded rule set. A student's level is whichever `Level` has the highest
+  `xpThreshold <= their total XP` (`app/lib/domains/progression/level.ts`, pure and unit-tested).
+  Admin-configurable per brief §5 (a new row is a data change, no code change) — the richer
+  multi-condition rule engine the brief eventually wants (lessons completed + quiz scores +
+  simulator performance combined) is deferred until there's more than one evidence source to
+  combine; a single XP threshold is honestly all that's meaningful with only quizzes built so far.
+- **XpEvent** — built exactly as specced: append-only ledger, `totalXp()` is a pure sum over the
+  events (`app/lib/domains/progression/xp.ts`), never a mutable running total. Currently one source
+  (`QUIZ_CORRECT`, 10 XP) — adding a new source is a constant, not a migration.
+- **Achievement** / **UserAchievement** — built, validated server-side only inside the same
+  transaction as grading (`gradeAttempt()`), never a client-reported flag. One achievement so far
+  (`FIRST_QUIZ_PASSED`) as the proof of pattern — `app/lib/domains/progression/achievements.ts`
+  holds the pure unlock-condition checkers, one function per achievement, so new achievements don't
+  bloat a single mega-function.
+- **Challenge** / **ChallengeProgress** — **still NOT YET IMPLEMENTED** — structured challenges
+  (brief §17) need more evidence sources (journal, simulator) to be meaningful; deferred with
+  Phase 3+.
 
 ### 2.6 Simulator (Phase 6)
 

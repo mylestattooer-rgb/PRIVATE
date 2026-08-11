@@ -8,6 +8,8 @@ import bcrypt from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
 import { indexDocument } from "../app/lib/ai/retrieval";
 import { createLesson, addLessonVersion, transitionLessonStatus } from "../app/lib/domains/learning/lessons";
+import { createQuestion } from "../app/lib/domains/assessment/questions";
+import { ACHIEVEMENT_KEYS } from "../app/lib/domains/progression/achievements";
 
 const prisma = new PrismaClient();
 
@@ -125,6 +127,52 @@ async function main() {
     });
 
     console.log("2 sample lessons ready (1 published, 1 draft) demonstrating curriculum versioning.");
+  }
+
+  // --- Levels (Phase 2, DATABASE.md §2.5) — admin-configurable thresholds ---
+  const levelDefs = [
+    { name: "Market Orientation", xpThreshold: 0 },
+    { name: "Foundations", xpThreshold: 50 },
+    { name: "Chart Reading", xpThreshold: 150 },
+    { name: "Market Structure", xpThreshold: 300 },
+  ];
+  for (const l of levelDefs) {
+    await prisma.level.upsert({ where: { xpThreshold: l.xpThreshold }, update: {}, create: l });
+  }
+  console.log(`${levelDefs.length} levels ready.`);
+
+  // --- Achievements (Phase 2) --------------------------------------------------
+  await prisma.achievement.upsert({
+    where: { key: ACHIEVEMENT_KEYS.FIRST_QUIZ_PASSED },
+    update: {},
+    create: {
+      key: ACHIEVEMENT_KEYS.FIRST_QUIZ_PASSED,
+      name: "First Quiz Passed",
+      description: "Answered a quiz question correctly for the first time.",
+    },
+  });
+  console.log("Achievement definitions ready.");
+
+  // --- Quiz questions on the published sample lesson (Phase 2) ----------------
+  const marketStructureLesson = await prisma.lesson.findFirst({ where: { slug: "what-is-market-structure" } });
+  if (marketStructureLesson) {
+    const existingQuestions = await prisma.question.count({ where: { lessonId: marketStructureLesson.id } });
+    if (existingQuestions === 0) {
+      await createQuestion({
+        lessonId: marketStructureLesson.id,
+        prompt: "What does a break of structure (BOS) indicate? (sample question)",
+        choices: [
+          "Price closed beyond a prior swing point in the trend direction",
+          "Price touched a round number",
+          "Volume increased on a single candle",
+          "A new session opened",
+        ],
+        correctIndex: 0,
+        explanation: "A BOS is defined by price closing beyond a prior swing point, continuing the trend.",
+        conceptIds: [concepts[0].id],
+      });
+      console.log("1 sample quiz question ready.");
+    }
   }
 
   // --- Demo students ----------------------------------------------------------

@@ -6,6 +6,7 @@ import { getSession } from "@/app/lib/auth";
 import { logAudit } from "@/app/lib/audit";
 import { createLesson, addLessonVersion, transitionLessonStatus } from "@/app/lib/domains/learning/lessons";
 import { LESSON_STATUSES, type LessonStatusValue } from "@/app/lib/domains/learning/status";
+import { createQuestion } from "@/app/lib/domains/assessment/questions";
 
 // redirect() is called directly in each action body, not via a shared
 // cross-module guard — see app/lib/auth.ts's note on the Next.js 16 redirect
@@ -72,6 +73,33 @@ export async function transitionLessonAction(formData: FormData) {
     actorId: session.sub,
     action: to === "PUBLISHED" ? "LESSON_PUBLISHED" : "LESSON_UPDATED",
     detail: `Lesson "${lesson.title}" moved to ${to}`,
+  });
+
+  revalidatePath("/admin/curriculum");
+}
+
+export async function createQuestionAction(formData: FormData) {
+  const session = await getSession();
+  if (!session) redirect("/login");
+
+  const lessonId = String(formData.get("lessonId") ?? "");
+  const prompt = String(formData.get("prompt") ?? "").trim();
+  const choices = String(formData.get("choices") ?? "")
+    .split("\n")
+    .map((c) => c.trim())
+    .filter(Boolean);
+  const correctIndex = Number(formData.get("correctIndex") ?? -1);
+  const explanation = String(formData.get("explanation") ?? "").trim() || undefined;
+
+  if (!lessonId || !prompt || choices.length < 2 || !Number.isInteger(correctIndex)) return;
+  if (correctIndex < 0 || correctIndex >= choices.length) return;
+
+  const question = await createQuestion({ lessonId, prompt, choices, correctIndex, explanation });
+
+  await logAudit({
+    actorId: session.sub,
+    action: "QUESTION_CREATED",
+    detail: `Added question to lesson ${lessonId}: "${question.prompt.slice(0, 60)}"`,
   });
 
   revalidatePath("/admin/curriculum");
