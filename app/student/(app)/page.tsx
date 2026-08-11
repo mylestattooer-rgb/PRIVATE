@@ -21,7 +21,7 @@ export default async function StudentDashboardPage() {
   const session = await getStudentSession();
   if (!session) redirect("/student/login");
 
-  const [student, progress, aiTutorEnabled, xpEvents, levels, unlockedAchievements, publishedLessons] =
+  const [student, progress, aiTutorEnabled, xpEvents, levels, unlockedAchievements, publishedLessons, masteries] =
     await Promise.all([
       prisma.student.findUnique({ where: { id: session.sub }, select: { name: true, status: true } }),
       prisma.moduleProgress.findMany({
@@ -41,6 +41,11 @@ export default async function StudentDashboardPage() {
         where: { status: "PUBLISHED" },
         include: { module: true },
         orderBy: [{ module: { orderIndex: "asc" } }, { orderIndex: "asc" }],
+      }),
+      prisma.conceptMastery.findMany({
+        where: { studentId: session.sub },
+        include: { concept: true },
+        orderBy: { updatedAt: "desc" },
       }),
     ]);
 
@@ -100,6 +105,22 @@ export default async function StudentDashboardPage() {
             </li>
           ))}
         </ul>
+      )}
+
+      {masteries.length > 0 && (
+        <>
+          <h2 className="mt-8 text-sm font-medium uppercase tracking-wide text-neutral-500">
+            Concept mastery
+          </h2>
+          <ul className="mt-2 divide-y divide-neutral-800 rounded-lg border border-neutral-800 bg-neutral-900">
+            {masteries.map((m) => (
+              <li key={m.id} className="flex items-center justify-between px-4 py-3">
+                <span className="text-sm text-neutral-200">{m.concept.name}</span>
+                <span className="text-xs text-neutral-500">{m.state.replace("_", " ")}</span>
+              </li>
+            ))}
+          </ul>
+        </>
       )}
 
       <h2 className="mt-8 text-sm font-medium uppercase tracking-wide text-neutral-500">

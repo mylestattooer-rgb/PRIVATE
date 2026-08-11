@@ -1,8 +1,8 @@
 # PROJECT_STATE — Trading School OS
 
-Last updated: 2026-08-11 (Phase 0 discovery, all of Phase 1 — student auth, entitlements, rate
-limiting, curriculum versioning — and Phase 2's first slice — quizzes, XP, levels, achievements —
-all built and verified across two sessions; see below and `ROADMAP.md`).
+Last updated: 2026-08-11 (Phase 0 discovery, all of Phase 1, and all of Phase 2 as this session
+scoped it — quizzes, XP, levels, achievements, concept mastery — built and verified; see below
+and `ROADMAP.md`. Phase 3 (journal) is next).
 
 Read this before starting new work — it should let a fresh session pick up without
 re-deriving context.
@@ -43,6 +43,7 @@ live.
 | Quizzes | **WORKING (basic)** | `Question`/`QuestionAttempt`, deterministic grading; student quiz UI at `/student/lessons/[id]`, admin authoring at `/admin/curriculum`; verified correct (+XP, achievement) and incorrect (no XP, feedback shown) paths |
 | XP / levels | **WORKING (basic)** | `XpEvent` append-only ledger, `Level.xpThreshold`; pure `totalXp()`/`levelForXp()`; shown on student dashboard with progress to next level |
 | Achievements | **WORKING (one)** | `Achievement`/`UserAchievement`, unlocked server-side inside the grading transaction; `FIRST_QUIZ_PASSED` seeded and verified unlocking + displaying on dashboard |
+| Concept mastery | **WORKING** | `ConceptMastery`, driven by `QuestionAttempt` evidence via pure `applyMasteryEvidence()`; verified NOT_INTRODUCED→LEARNING transition on a fresh correct answer, shown on student dashboard |
 
 ### Explicitly out of scope for Phase 1 (schema exists, no UI yet)
 
@@ -181,6 +182,8 @@ whenever they're ready, didn't want to auto-rename without asking).
   `correctIndex`) + per-student graded attempts
 - **Level** / **XpEvent** / **Achievement** / **UserAchievement** — progression: XP is a summed
   append-only ledger, level is an XP-threshold lookup, achievements unlock server-side only
+- **ConceptMastery** — per-student per-concept state (NOT_INTRODUCED→...→MASTERED), driven by
+  `QuestionAttempt` evidence via a pure streak-based state machine
 - **ModuleProgress** — per-student progress against a `Module` (status + optional score)
 - **Note** — free-text CRM notes on a student, optional author, optional pinned flag
 - **CrmActivity** — lightweight activity log distinct from AuditLog (student-facing CRM
@@ -241,10 +244,12 @@ whenever they're ready, didn't want to auto-rename without asking).
 5. Consider whether Next.js 16 / React 19 stay pinned as-is or get revisited once they're
    more battle-tested — flagging only because both were bleeding-edge at scaffold time, and
    this session found one real behavioral quirk in this version (see Known issues above).
-6. **`ConceptMastery`** (`DATABASE.md` §2.2) — `QuestionAttempt` now provides real evidence to
-   drive this; was deferred until there was something real to evaluate against, which is now true.
-7. **Randomized question pools** (`DATABASE.md` §2.3, brief §53) — no anti-cheating yet; fine with
-   one question per lesson, a real gap once lessons have enough questions for order to matter.
+6. **Randomized question pools** (`DATABASE.md` §2.3, brief §53) — no anti-cheating yet; fine with
+   one-to-two questions per lesson, a real gap once lessons have enough questions for order to
+   matter.
+7. **Phase 3 (journal)** — `JournalTrade` model has existed since Phase 0, still unused; UI +
+   writes + an `AiInsight` table (`DATABASE.md` §2.4) are next. All of Phase 2 (quizzes, XP,
+   levels, achievements, concept mastery) is now done — see `ROADMAP.md`.
 
 ## Next recommended task
 

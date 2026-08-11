@@ -45,7 +45,7 @@ lesson-versioning logic (`status.ts` pure state machine, unit-tested; `lessons.t
 Phase 1 is complete. Phase 2's first slice (quizzes, XP, levels, achievements) landed the same
 day — see the Phase 2 section below for what's built and what's next.
 
-## Phase 2 — Assessment: FIRST SLICE DONE
+## Phase 2 — Assessment: DONE (to the depth this session scoped it)
 
 | Item | Status |
 |---|---|
@@ -53,19 +53,21 @@ day — see the Phase 2 section below for what's built and what's next.
 | Question bank + quizzes | **DONE (basic)** — `Question`/`QuestionAttempt`, deterministic grading (`app/lib/domains/assessment/questions.ts`), student-facing quiz UI at `/student/lessons/[id]`, admin authoring in `/admin/curriculum`. **Not built**: randomized question pools/anti-cheating (brief §53) |
 | Progression levels / XP | **DONE (basic)** — `Level`/`XpEvent`, pure `totalXp()`/`levelForXp()` (`app/lib/domains/progression/`), shown on student dashboard. 4 levels seeded (0/50/150/300 XP). **Not built**: multi-condition level requirements (brief §5 wants lessons+quizzes+simulator combined — only quiz XP feeds it so far) |
 | Achievements | **DONE (one)** — `Achievement`/`UserAchievement`, server-side-only unlock inside the grading transaction. One achievement (`FIRST_QUIZ_PASSED`) as proof of pattern |
-| Challenges | **NOT STARTED** — needs more evidence sources (journal, simulator) to be meaningful |
-| ConceptMastery | **NOT STARTED** — `DATABASE.md` §2.2; now has real evidence (QuestionAttempt) to drive it, this is the natural next piece |
+| ConceptMastery | **DONE** — `app/lib/domains/progression/mastery.ts` (pure, unit-tested), wired into `gradeAttempt()`'s transaction, shown on student dashboard. NOT_INTRODUCED→...→MASTERED driven by consecutive-correct streaks per concept |
+| Challenges | **NOT STARTED** — needs more evidence sources (journal, simulator) to be meaningful; correctly deferred, not a gap in this phase |
 
-Verified end-to-end in-browser: correct answer → +10 XP, level progress bar updates, achievement
-unlocks and shows on dashboard; incorrect answer → 0 XP, no achievement, "not quite" feedback
-with explanation; admin can add a question to a lesson and it appears correctly for students.
-34 tests total now (up from 22) — `app/lib/domains/progression/` and `assessment/` both unit-tested
-where the logic is pure (grading equality, XP summation, level lookup, achievement conditions).
+Verified end-to-end in-browser: correct answer → +10 XP, level progress updates, achievement
+unlocks, ConceptMastery advances to LEARNING and displays on dashboard; incorrect answer → 0 XP,
+no achievement, streak resets, "not quite" feedback with explanation; admin can add a question to
+a lesson and it appears correctly for students. 38 tests total now (up from 22 at the start of
+Phase 2) — `app/lib/domains/progression/` and `assessment/` both unit-tested where the logic is
+pure (grading equality, XP summation, level lookup, achievement conditions, mastery streaks).
 
-**Next concrete milestone:**
-1. `ConceptMastery` (`DATABASE.md` §2.2) — now that `QuestionAttempt` provides real evidence,
-   this is buildable without designing in a vacuum.
-2. Randomized question selection (brief §53) once a lesson has enough questions for it to matter.
+**Next concrete milestone (starts Phase 3):**
+1. Trading journal UI + writes — `JournalTrade` schema has existed since Phase 0 discovery,
+   unused; see Phase 3 below.
+2. Randomized question selection (brief §53) once a lesson has enough questions for it to matter —
+   left for whenever real content volume makes it a real gap, not simulated with placeholder data.
 3. A second achievement + a second level-contributing XP source, to prove the pattern generalizes
    before investing in the richer multi-condition Level rule engine the brief eventually wants.
 

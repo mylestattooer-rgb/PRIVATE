@@ -171,7 +171,20 @@ async function main() {
         explanation: "A BOS is defined by price closing beyond a prior swing point, continuing the trend.",
         conceptIds: [concepts[0].id],
       });
-      console.log("1 sample quiz question ready.");
+      await createQuestion({
+        lessonId: marketStructureLesson.id,
+        prompt: "Which sequence describes an uptrend in market structure? (sample)",
+        choices: [
+          "Higher highs and higher lows",
+          "Lower highs and lower lows",
+          "Equal highs and equal lows",
+          "Random highs and lows",
+        ],
+        correctIndex: 0,
+        explanation: "An uptrend is defined by a sequence of higher highs and higher lows (sample).",
+        conceptIds: [concepts[0].id],
+      });
+      console.log("2 sample quiz questions ready.");
     }
   }
 

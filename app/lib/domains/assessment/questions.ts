@@ -5,6 +5,7 @@
 import { prisma } from "@/app/lib/db";
 import { XP_AMOUNTS, XP_SOURCES } from "@/app/lib/domains/progression/xp";
 import { ACHIEVEMENT_KEYS, shouldUnlockFirstQuizPassed } from "@/app/lib/domains/progression/achievements";
+import { applyMasteryEvidence } from "@/app/lib/domains/progression/mastery";
 
 export async function createQuestion(input: {
   lessonId: string;
@@ -35,7 +36,10 @@ export async function createQuestion(input: {
 // server-side achievement unlock — all in one transaction so a crash
 // mid-grade can't award XP without recording the attempt, or vice versa.
 export async function gradeAttempt(input: { studentId: string; questionId: string; selectedIndex: number }) {
-  const question = await prisma.question.findUniqueOrThrow({ where: { id: input.questionId } });
+  const question = await prisma.question.findUniqueOrThrow({
+    where: { id: input.questionId },
+    include: { concepts: true },
+  });
   const correct = input.selectedIndex === question.correctIndex;
 
   const priorCorrectAttempts = await prisma.questionAttempt.count({
@@ -57,6 +61,22 @@ export async function gradeAttempt(input: { studentId: string; questionId: strin
       xpAwarded = XP_AMOUNTS.QUIZ_CORRECT;
       await tx.xpEvent.create({
         data: { studentId: input.studentId, source: XP_SOURCES.QUIZ_CORRECT, amount: xpAwarded },
+      });
+    }
+
+    // Every concept this question tests gets one piece of mastery evidence,
+    // regardless of correctness — a wrong answer still means the concept was
+    // attempted (CURRICULUM_SYSTEM.md's NOT_INTRODUCED -> ... -> MASTERED
+    // ladder), it just resets the consecutive-correct streak.
+    for (const concept of question.concepts) {
+      const existing = await tx.conceptMastery.findUnique({
+        where: { studentId_conceptId: { studentId: input.studentId, conceptId: concept.id } },
+      });
+      const { consecutiveCorrect, state } = applyMasteryEvidence(existing?.consecutiveCorrect ?? 0, correct);
+      await tx.conceptMastery.upsert({
+        where: { studentId_conceptId: { studentId: input.studentId, conceptId: concept.id } },
+        update: { consecutiveCorrect, state, lastEvidenceAt: new Date() },
+        create: { studentId: input.studentId, conceptId: concept.id, consecutiveCorrect, state, lastEvidenceAt: new Date() },
       });
     }
 

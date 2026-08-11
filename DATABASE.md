@@ -72,10 +72,16 @@ separately. `Plan`/`planId` also landed, seeded with one `free` plan. Migration:
 - **Concept** — flat, admin-editable list as specced, implicit many-to-many with `Lesson` (a
   concept doesn't need extra join-row fields, so no explicit join table). 3 concepts seeded,
   tagged onto the 2 sample lessons.
-- **ConceptMastery** — **still NOT YET IMPLEMENTED** (per-student, per-concept state,
-  NOT_INTRODUCED → ... → MASTERED per brief §7) — this needs quiz/chart-exercise evidence sources
-  that don't exist yet (Phase 2 assessment), so it's deferred until there's real evidence to drive
-  it, not built as an empty shell now.
+- **ConceptMastery** — DONE, driven by `QuestionAttempt` evidence: `state` and
+  `consecutiveCorrect` are both derived by `applyMasteryEvidence()`
+  (`app/lib/domains/progression/mastery.ts`, pure and unit-tested) inside `gradeAttempt()`'s
+  transaction — every concept a question tests gets one piece of evidence per attempt, correct or
+  not. A wrong answer resets the streak (drops display state to INTRODUCED) but the ladder only
+  climbs from *sustained* correct streaks (1→LEARNING, 2→UNDERSTOOD, 3→APPLIED, 5→CONSISTENT,
+  8→MASTERED) — thresholds chosen as a reasonable default, not derived from any real usage data
+  yet. `lastEvidenceAt` is captured but the time-based confidence-decay mechanic the brief also
+  wants (`CURRICULUM_SYSTEM.md`) is still not built — that's a separate mechanism from the
+  streak-reset-on-wrong-answer behavior here, deliberately not conflated with it.
 
 ### 2.3 Assessment — partially DONE (basic quizzes; randomization/anti-cheating still pending)
 

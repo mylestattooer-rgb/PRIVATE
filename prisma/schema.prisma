@@ -71,6 +71,7 @@ model Student {
   questionAttempts QuestionAttempt[]
   xpEvents         XpEvent[]
   achievements     UserAchievement[]
+  conceptMasteries ConceptMastery[]
 }
 
 // --- Entitlements (ARCHITECTURE.md "central entitlements module") ----------
@@ -185,6 +186,7 @@ model Concept {
 
   lessons   Lesson[]
   questions Question[]
+  masteries ConceptMastery[]
 }
 
 enum ProgressStatus {
@@ -287,6 +289,39 @@ model UserAchievement {
   achievement Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
 
   @@unique([studentId, achievementId])
+}
+
+enum MasteryState {
+  NOT_INTRODUCED
+  INTRODUCED
+  LEARNING
+  UNDERSTOOD
+  APPLIED
+  CONSISTENT
+  MASTERED
+}
+
+// Per-student, per-concept state (brief §7's ladder). `state` and
+// `consecutiveCorrect` are both derived, by a pure function
+// (app/lib/domains/progression/mastery.ts), from QuestionAttempt evidence —
+// a wrong answer resets the streak but never downgrades `state` itself
+// (only sustained old evidence should erode confidence, per
+// CURRICULUM_SYSTEM.md's "decays when evidence is old" — the actual decay
+// curve is still undecided/not built; `lastEvidenceAt` is captured now so
+// that piece can be added without another migration).
+model ConceptMastery {
+  id                 String       @id @default(cuid())
+  studentId          String
+  conceptId          String
+  state              MasteryState @default(NOT_INTRODUCED)
+  consecutiveCorrect Int          @default(0)
+  lastEvidenceAt     DateTime?
+  updatedAt          DateTime     @updatedAt
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  concept Concept @relation(fields: [conceptId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, conceptId])
 }
 
 // --- Notes / CRM activity ---------------------------------------------------
