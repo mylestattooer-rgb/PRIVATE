@@ -5,12 +5,18 @@
 // runs end-to-end with zero external dependencies. MockProvider answers are template-built
 // strictly from retrieved knowledge-base chunks — it never invents methodology.
 
+// Kept as a plain string union (not imported from @prisma/client) so this
+// leaf module stays decoupled from the Prisma-generated types — matches
+// isSample/needsReview already being plain booleans here, not enum imports.
+export type TrustLevel = "A_OFFICIAL" | "B_INSTRUCTOR_APPROVED" | "C_REFERENCE" | "D_COMMUNITY";
+
 export type RetrievedChunk = {
   chunkId: string;
   documentId: string;
   documentTitle: string;
   isSample: boolean;
   needsReview: boolean;
+  trustLevel: TrustLevel;
   content: string;
   score: number;
 };
@@ -49,6 +55,9 @@ class MockProvider implements AiProvider {
     const reviewWarning = context.some((c) => c.needsReview)
       ? "\n\n_Note: this answer draws on content that hasn't been confirmed by an admin yet — treat it as unconfirmed, not established methodology._"
       : "";
+    const communityWarning = context.some((c) => c.trustLevel === "D_COMMUNITY")
+      ? "\n\n_Note: this answer draws on community-submitted content, not official school methodology — treat it as one student's perspective, not a confirmed rule._"
+      : "";
 
     const body = context
       .slice(0, 3)
@@ -59,6 +68,7 @@ class MockProvider implements AiProvider {
       `Here's what the knowledge base says relevant to "${question.trim()}":\n\n${body}` +
       sampleWarning +
       reviewWarning +
+      communityWarning +
       "\n\n_This is a template response from the mock AI provider (no ANTHROPIC_API_KEY configured) — " +
       "it surfaces and quotes your source material rather than reasoning over it. " +
       "Set ANTHROPIC_API_KEY to enable full generative answers over the same sources._";
@@ -89,6 +99,7 @@ class AnthropicProvider implements AiProvider {
         const flags = [
           c.isSample && "SAMPLE placeholder content",
           c.needsReview && "NOT YET CONFIRMED by an admin",
+          `trust level: ${c.trustLevel}`,
         ]
           .filter(Boolean)
           .join(", ");
@@ -104,7 +115,12 @@ class AnthropicProvider implements AiProvider {
       "which source it came from. If any source is marked SAMPLE placeholder content, tell the student " +
       "this is example material, not confirmed methodology. If any source is marked NOT YET CONFIRMED, " +
       "tell the student this content hasn't been reviewed/approved by the school yet and should be treated " +
-      "as provisional, not settled.";
+      "as provisional, not settled. Each source also carries a trust level: A_OFFICIAL (published " +
+      "curriculum) and B_INSTRUCTOR_APPROVED (reviewed instructor material) can be presented with normal " +
+      "confidence; C_REFERENCE (general reference material) should be presented as background, not a " +
+      "school rule; D_COMMUNITY (student-submitted content) must be presented as one student's " +
+      "perspective, never as official school methodology, regardless of how confidently it's phrased in " +
+      "the source text.";
 
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",

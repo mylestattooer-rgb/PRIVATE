@@ -1,6 +1,13 @@
 import Link from "next/link";
 import { prisma } from "@/app/lib/db";
-import { uploadDocument, deleteDocument, approveDocument } from "./actions";
+import { uploadDocument, deleteDocument, approveDocument, setTrustLevelAction } from "./actions";
+
+const TRUST_LABEL: Record<string, string> = {
+  A_OFFICIAL: "Official",
+  B_INSTRUCTOR_APPROVED: "Instructor-approved",
+  C_REFERENCE: "Reference",
+  D_COMMUNITY: "Community",
+};
 
 export default async function KnowledgePage() {
   const docs = await prisma.document.findMany({
@@ -43,9 +50,29 @@ export default async function KnowledgePage() {
                   {d.needsReview && (
                     <span className="ml-2 rounded bg-orange-900 px-1.5 py-0.5 text-orange-300">NEEDS REVIEW</span>
                   )}
+                  <span className="ml-2 rounded bg-neutral-800 px-1.5 py-0.5 text-neutral-300">
+                    {TRUST_LABEL[d.trustLevel]}
+                  </span>
                 </p>
               </div>
               <div className="flex items-center gap-3">
+                <form action={setTrustLevelAction} className="flex items-center gap-1">
+                  <input type="hidden" name="id" value={d.id} />
+                  <select
+                    name="trustLevel"
+                    defaultValue={d.trustLevel}
+                    className="rounded-md border border-neutral-700 bg-neutral-950 px-2 py-1 text-xs text-neutral-300"
+                  >
+                    {Object.entries(TRUST_LABEL).map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                  <button type="submit" className="text-xs text-neutral-400 hover:text-neutral-200">
+                    Set
+                  </button>
+                </form>
                 {d.needsReview && (
                   <form action={approveDocument}>
                     <input type="hidden" name="id" value={d.id} />

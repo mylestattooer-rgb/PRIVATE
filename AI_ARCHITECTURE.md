@@ -24,22 +24,52 @@ status.
   (real content, not yet admin-confirmed) are both surfaced everywhere a document or its citations
   appear, including inside the mock provider's answer text and the system prompt sent to Anthropic.
 
-## Planned: knowledge trust levels (Phase 4)
+## Knowledge trust levels — DONE
 
-Brief §30 asks for a Level A-D trust hierarchy (official methodology / instructor-approved /
-reference / community). This is additive to what exists, not a replacement:
+Brief §30's Level A-D trust hierarchy is built as additive to what already existed, not a
+replacement:
 
 - `isSample` — "is this fake demo content" (orthogonal to trust — a sample doc is never real,
   regardless of trust level)
 - `needsReview` — "is this real but not yet admin-confirmed" (a temporal/workflow state)
-- `trustLevel` (new) — "whose authority does this carry, once confirmed": A_OFFICIAL (published
+- `trustLevel` — "whose authority does this carry, once confirmed": A_OFFICIAL (published
   curriculum), B_INSTRUCTOR_APPROVED (reviewed instructor material), C_REFERENCE (general
-  reference, e.g. glossary), D_COMMUNITY (student-contributed, brief §21's reputation content)
+  reference, e.g. glossary — the schema default), D_COMMUNITY (student-contributed, brief §21's
+  reputation content — no community feature exists yet to populate this, but the tier is real and
+  ready)
 
-The AI system prompt and citation UI should let a `D_COMMUNITY` source visibly read differently
-from an `A_OFFICIAL` one — a community answer citing another student's post should never be
-presented with the same authority as a citation to published curriculum. §30's rule holds:
-community content never automatically becomes authoritative Trading X methodology.
+Both providers factor it in: `MockProvider` adds a community-content caution note (parallel to the
+existing sample/needsReview notes) when any cited chunk is `D_COMMUNITY`; `AnthropicProvider`'s
+system prompt instructs the model to present A/B sources with normal confidence, C as background
+rather than a school rule, and D as one student's perspective, never official methodology,
+regardless of how confidently the source text itself is phrased. Citation UI (both admin and
+student chat) shows a trust-level label next to each source. Admin sets/changes a document's trust
+level from `/admin/knowledge` — a data change, not a code change, per brief §30's "the AI should
+know the difference" being enforced by the field itself, not by trusting content authors to
+self-report accurately (a community post claiming to be an "official rule" doesn't become one
+because it says so — `trustLevel` is admin-set, never client-supplied).
+
+## Student-facing AI Tutor — DONE
+
+`/student/ai-tutor` reuses the exact same retrieval/provider/citation pipeline as the admin chat
+(`ChatClient.tsx` is now a shared component, parameterized by `endpoint`/`historyBasePath` rather
+than duplicated) — proving the "same infrastructure, different surface" design this doc always
+assumed. Own Route Handler (`app/api/student/chat/route.ts`), not a shared one with admin: gated
+by `studentCan(USE_AI_TUTOR)` (403 if not entitled), and every conversation read/write is scoped
+by `studentId` at the query layer — a student can only ever create or continue their own
+`Conversation` (`scope: "STUDENT"`), never an admin's or another student's.
+
+**A real isolation bug was found and fixed while verifying this**: the route originally used
+`findUniqueOrThrow` to look up an existing conversation scoped to the caller. Passing another
+student's real conversation ID correctly found *no matching row* (the isolation itself was never
+broken — `studentId` was already part of the `where` clause), but `findUniqueOrThrow` throwing on
+that miss produced an unhandled exception and a raw 500 with a stack trace in the server log,
+rather than a clean 404. Fixed by switching to `findFirst` + an explicit not-found response.
+Verified via a raw hijack-attempt `fetch()`: before the fix, 500 with no response body (no data
+leaked, but noisy); after, a clean `404 {"error":"Conversation not found"}`. No successful hijack
+was ever possible either way — this was a robustness/hygiene fix, not a closed data-leak — but a
+500 on an authorization boundary is exactly the kind of symptom worth chasing down rather than
+shrugging off as "well, it didn't leak anything."
 
 ## Planned: uncertainty categories (Phase 4-5)
 
@@ -90,9 +120,12 @@ existing prompt-injection stance generalized to this project:
   and prompt-injection surface, brief §35). A community post claiming to be an "official rule" does
   not become one because it was phrased that way — trust level is a database field the content
   author cannot set for themselves.
-- **No data leakage between students.** Retrieval and chat scoping must filter by the authenticated
-  student's own data (journal, conversation history) — enforced at the query layer, not just the UI.
-  This becomes concretely testable once student auth lands (Phase 1) — see `SECURITY.md`.
+- **No data leakage between students — DONE, verified.** Chat conversation history is filtered by
+  the authenticated student's own `studentId` at the query layer (`app/api/student/chat/route.ts`,
+  `/student/ai-tutor`'s page query), not just hidden in the UI. Verified in-browser: a second
+  student's chat history page showed empty, and a direct hijack attempt (real `fetch()` with
+  another student's conversation ID) was correctly rejected. Journal data isolation verified the
+  same way in Phase 3 — see `SECURITY.md` §2.1 and `PROJECT_STATE.md`.
 
 ## Content versioning and AI knowledge (ties to CURRICULUM_SYSTEM.md)
 

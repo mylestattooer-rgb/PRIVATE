@@ -81,6 +81,7 @@ export async function retrieveRelevantChunks(query: string, limit = 5): Promise<
       documentTitle: chunk.document.title,
       isSample: chunk.document.isSample,
       needsReview: chunk.document.needsReview,
+      trustLevel: chunk.document.trustLevel,
       content: chunk.content,
       score,
     }));

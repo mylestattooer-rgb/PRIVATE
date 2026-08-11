@@ -1,8 +1,9 @@
 # PROJECT_STATE — Trading School OS
 
-Last updated: 2026-08-11 (Phase 0 discovery through Phase 3 as this session scoped each phase —
-auth/entitlements, curriculum+quizzes+XP+levels+achievements+mastery, and now the trading journal
-— all built and verified; see below and `ROADMAP.md`. Phase 4 (AI Tutor upgrades) is next).
+Last updated: 2026-08-11 (Phase 0 discovery through Phase 4 as this session scoped each phase —
+auth/entitlements, curriculum+quizzes+XP+levels+achievements+mastery, trading journal, and now
+knowledge trust levels + a student-facing AI Tutor — all built and verified; see below and
+`ROADMAP.md`. Phase 5 (Chart Lab) is next).
 
 Read this before starting new work — it should let a fresh session pick up without
 re-deriving context.
@@ -46,17 +47,19 @@ live.
 | Concept mastery | **WORKING** | `ConceptMastery`, driven by `QuestionAttempt` evidence via pure `applyMasteryEvidence()`; verified NOT_INTRODUCED→LEARNING transition on a fresh correct answer, shown on student dashboard |
 | Trading journal | **WORKING** | `/student/journal` — create/delete trades, deterministic stats (win rate, avg R, best/worst setup, top mistake); data isolation verified (a second student's journal correctly showed empty) |
 | Journal AI insights | **WORKING (deterministic)** | `AiInsight`, evidence-linked to the trades it summarizes; gated at 5 trades minimum (never manufactures a conclusion from too little data); text is template-based today, not yet routed through `app/lib/ai/provider.ts` — see `DATABASE.md` §2.4 |
+| Knowledge trust levels | **WORKING** | `Document.trustLevel` (A_OFFICIAL/B_INSTRUCTOR_APPROVED/C_REFERENCE/D_COMMUNITY), admin-settable at `/admin/knowledge`; both AI providers and citation UI factor it in |
+| Student AI Tutor | **WORKING** | `/student/ai-tutor`, entitlement-gated, own Route Handler with student-scoped conversation isolation; verified real Q&A, cross-student isolation, and a rejected hijack attempt |
 
 ### Still out of scope (schema exists for some, no UI yet)
 
 Marked **NOT YET IMPLEMENTED** — nav shows them as "Coming soon" stubs so the intended full
-platform shape is visible without pretending they work. (Trading journal and quizzing, formerly
-listed here, are now built — see the table above.)
+platform shape is visible without pretending they work. (Trading journal, quizzing, and the
+student-facing AI Tutor, formerly listed here, are now built — see the table above.)
 
 - **Lead/sales CRM workflows** — `CrmActivity` model exists, only written to by student
   status changes so far; no dedicated lead pipeline UI, no automated follow-ups
-- **AI Tutor, student-facing** — the AI chat exists but is admin-only (`/admin/chat`); a
-  student-facing version with Socratic Chart Lab behavior is Phase 4/5 (`AI_ARCHITECTURE.md`)
+- **Chart Lab / Socratic AI questioning** — Phase 5; needs image-upload infrastructure that
+  doesn't exist yet (`ROADMAP.md`)
 - **Automations** (inactivity detection, automated emails, escalation to human) — `Approval`
   model exists for the human-approval gate this would need, but nothing produces approval
   requests yet
@@ -193,9 +196,11 @@ whenever they're ready, didn't want to auto-rename without asking).
   history vs. system-wide admin audit trail)
 - **Document** / **DocumentChunk** — knowledge base source + its retrieval chunks;
   `isSample` flag (fake demo content), `needsReview` flag (real but unconfirmed — see
-  "Methodology extraction" above), `status` (PROCESSING/READY/ERROR)
-- **Conversation** / **Message** / **Citation** — AI chat history; `Citation` is the join
-  linking an assistant `Message` to the `DocumentChunk`(s) it cited, with a similarity score
+  "Methodology extraction" above), `trustLevel` (A_OFFICIAL/B_INSTRUCTOR_APPROVED/C_REFERENCE/
+  D_COMMUNITY, admin-set), `status` (PROCESSING/READY/ERROR)
+- **Conversation** / **Message** / **Citation** — AI chat history (both `/admin/chat` and
+  `/student/ai-tutor` now real); `Citation` is the join linking an assistant `Message` to the
+  `DocumentChunk`(s) it cited, with a similarity score
 - **JournalTrade** — student-owned trade log, writable from `/student/journal`
 - **AiInsight** — evidence-linked pattern observations over a student's own `JournalTrade`s,
   m2m to the trades it summarizes; kept structurally separate from `JournalTrade.notes`
@@ -236,6 +241,19 @@ whenever they're ready, didn't want to auto-rename without asking).
   this environment this session — if a route/behavior looks wrong right after adding new files or
   killing a dev server abruptly, clear `.next` and restart before spending time debugging the
   application code.
+- **Dev server process died unexpectedly mid-session** (2026-08-11, during Phase 4 verification):
+  `preview_list` returned empty and `fetch()` calls started failing with "Failed to fetch" (i.e.
+  connection refused, not an app error) with no corresponding crash logged anywhere accessible.
+  Restarting via `preview_start` recovered immediately, cookies/DB state intact (SQLite file
+  persists independent of the dev server process). If a previously-working preview suddenly can't
+  be reached at all, check `preview_list` for an empty result before assuming an app bug.
+- **Real bug found and fixed 2026-08-11**: the student chat route used `findUniqueOrThrow` for a
+  student-scoped conversation lookup — isolation itself was correct (a mismatched ID matched
+  nothing), but the unhandled throw on that miss produced a raw 500 with a server-side stack trace
+  instead of a clean 404. Fixed via `findFirst` + explicit not-found response. Full writeup in
+  `AI_ARCHITECTURE.md` "Student-facing AI Tutor." Caught by deliberately trying to hijack another
+  student's conversation via a raw `fetch()`, not by normal-path testing — worth doing for any new
+  student-scoped endpoint, not just the happy path.
 
 ## Outstanding tasks (recommended order)
 
@@ -259,9 +277,9 @@ whenever they're ready, didn't want to auto-rename without asking).
 6. **Wire `AiInsight` to the real `AiProvider`** (`DATABASE.md` §2.4) — currently deterministic
    template text; swapping in real phrasing is additive, not urgent while mock-mode is the
    default provider anyway.
-7. **Phase 4 (AI Tutor upgrades)** — student-facing AI chat (today's is admin-only), knowledge
-   trust levels (A-D), Socratic Chart Lab behavior. All of Phases 1-3 are now done — see
-   `ROADMAP.md`.
+7. **Phase 5 (Chart Lab)** — chart exercises, upload analysis, Socratic AI questioning. All of
+   Phases 1-4 are now done — see `ROADMAP.md`. Needs image-upload handling this codebase doesn't
+   have yet (`SECURITY.md` §2.3).
 
 ## Next recommended task
 

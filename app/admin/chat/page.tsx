@@ -33,6 +33,7 @@ export default async function ChatPage({
         documentTitle: c.chunk.document.title,
         isSample: c.chunk.document.isSample,
         needsReview: c.chunk.document.needsReview,
+        trustLevel: c.chunk.document.trustLevel,
         score: c.score,
       })),
     }));

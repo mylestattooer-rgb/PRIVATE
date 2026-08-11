@@ -67,14 +67,20 @@ re-verifying in a real browser first.
 
 ## 2. What Phase 1+ must add (not yet implemented)
 
-### 2.1 Student data isolation — DONE for the one query built so far
+### 2.1 Student data isolation — DONE, applied consistently across every domain built since
 
 Student auth landed (see above): `getStudentSession()`/`requireStudentApi()` return the
-authenticated student's own ID from the verified session cookie, and the dashboard's
-`ModuleProgress` query filters by that ID, not a client-supplied one — the pattern this section
-called for. Still to apply as each new student-scoped domain lands (journal, conversation history,
-mastery state, Phase 2+): every query must take the session-derived student ID as a mandatory
-parameter, never trust one from form data or a URL param.
+authenticated student's own ID from the verified session cookie. Every student-scoped domain
+built since filters by that ID at the query layer, never a client-supplied one — `ModuleProgress`
+(Phase 1), `JournalTrade`/`AiInsight` (Phase 3, `deleteTrade` takes studentId as a mandatory
+filter param), `QuestionAttempt`/`ConceptMastery` (Phase 2), and `Conversation`/`Message` for the
+student AI Tutor (Phase 4). The last one caught a real bug: the chat route originally used
+`findUniqueOrThrow` for an existing-conversation lookup scoped by studentId — isolation itself was
+never broken (a mismatched ID correctly matched nothing), but the unhandled exception on that miss
+produced a raw 500 instead of a clean 404. Fixed via `findFirst` + explicit not-found response;
+full writeup in `AI_ARCHITECTURE.md`. Verified in-browser for both journal and chat: a second
+student's view is empty, and a direct hijack attempt (real `fetch()` with another student's
+resource ID) is correctly rejected with no data returned.
 
 ### 2.2 Rate limiting — DONE
 

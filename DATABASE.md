@@ -1,8 +1,9 @@
 # DATABASE — Trading X
 
 Status: mixed, and this doc now spans several build sessions (2026-08-10 through 2026-08-11) —
-Phase 1 (student auth, entitlements, curriculum versioning) and Phase 2's first slice (quizzes,
-XP, levels, achievements) are all real. Section 1 describes the schema as it exists today
+Phase 1 (student auth, entitlements, curriculum versioning), Phase 2 (quizzes, XP, levels,
+achievements, concept mastery), Phase 3 (journal + insights), and Phase 4's first slice (knowledge
+trust levels, student AI Tutor) are all real. Section 1 describes the schema as it exists today
 (authoritative source: `prisma/schema.prisma`). Section 2 is what's left of the original planned
 evolution — each subsection now says DONE/partial/NOT YET IMPLEMENTED rather than being uniformly
 aspirational.
@@ -27,14 +28,15 @@ aspirational.
 - **CrmActivity** — lightweight student-facing activity log, distinct from `AuditLog` (system-wide
   admin audit trail).
 - **Document** / **DocumentChunk** — knowledge base source + TF-IDF retrieval chunks. Flags:
-  `isSample` (fake demo content), `needsReview` (real content, not yet admin-confirmed), `status`
+  `isSample` (fake demo content), `needsReview` (real content, not yet admin-confirmed),
+  `trustLevel` (A_OFFICIAL/B_INSTRUCTOR_APPROVED/C_REFERENCE/D_COMMUNITY, admin-set, default
+  C_REFERENCE — see `AI_ARCHITECTURE.md` "Knowledge trust levels"), `status`
   (PROCESSING/READY/ERROR).
-- **Conversation** / **Message** / **Citation** — AI chat history. `Conversation.scope` already
-  distinguishes STUDENT vs ADMIN, but no student-facing UI reads it yet. `Citation` joins an
-  assistant `Message` to the `DocumentChunk`(s) it cited, with a similarity score — this is the
-  mechanism that makes AI answers traceable, already real.
-- **JournalTrade** — symbol/direction/entry/exit/result/rMultiple/setupTag/mistakeTag/notes.
-  Schema-complete, zero UI, zero writes.
+- **Conversation** / **Message** / **Citation** — AI chat history. `Conversation.scope`
+  distinguishes STUDENT vs ADMIN — both now have real UIs (`/admin/chat`, `/student/ai-tutor`),
+  each scoped to its own principal at the query layer. `Citation` joins an assistant `Message` to
+  the `DocumentChunk`(s) it cited, with a similarity score.
+- **JournalTrade** / **AiInsight** — student journal, writable from `/student/journal`; see §2.4.
 - **AuditLog** — every login, AI query/response, student/document mutation. System-wide, immutable
   append log.
 - **Approval** — human-approval gate for sensitive AI-proposed actions (e.g. "send this email").

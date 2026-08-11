@@ -31,10 +31,16 @@ export default async function StudentLayout({ children }: { children: React.Reac
           >
             Journal
           </Link>
+          <Link
+            href="/student/ai-tutor"
+            className="rounded-md px-3 py-2 text-sm text-neutral-300 transition hover:bg-neutral-800 hover:text-white"
+          >
+            AI Tutor
+          </Link>
           <p className="mt-6 px-3 text-xs font-medium uppercase tracking-wide text-neutral-600">
             Coming soon
           </p>
-          {["AI Tutor", "Chart Lab"].map((label) => (
+          {["Chart Lab"].map((label) => (
             <span
               key={label}
               className="cursor-default rounded-md px-3 py-2 text-sm text-neutral-600"

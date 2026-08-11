@@ -87,18 +87,25 @@ second student's journal correctly showed empty (0 trades), confirming data isol
 prompted reflection questions yet), broker-imported trades (brief §14's third provenance —
 manual/simulator/broker — only manual exists, simulator doesn't exist until Phase 6).
 
-## Phase 4 — AI Tutor (Trading X methodology): PARTIALLY DONE
+## Phase 4 — AI Tutor (Trading X methodology): DONE (to the depth this session scoped it)
 
-Knowledge base, retrieval, tutor interface, and citations already exist and work
-(`AI_ARCHITECTURE.md` "Current"). What's missing: trust levels (Level A-D), student-facing tutor
-UI (today's `/admin/chat` is admin-only), AI security hardening for a student-facing surface
-(`SECURITY.md` §2.1-2.2). Socratic questioning behavior is Phase 5's concern (tied to Chart Lab)
-though the underlying provider infrastructure is shared.
+| Item | Status |
+|---|---|
+| Knowledge base, retrieval, citations | **DONE** (Phase 0) |
+| Trust levels (A-D) | **DONE** — `Document.trustLevel`, both providers factor it in, citation UI shows it, admin sets it from `/admin/knowledge` |
+| Student-facing tutor UI | **DONE** — `/student/ai-tutor`, entitlement-gated, own Route Handler, own conversation scope |
+| AI security hardening (`SECURITY.md` §2.1) | **DONE** — student chat isolated at the query layer; a real isolation-adjacent bug (500 instead of 404 on a mismatched conversation ID) found and fixed during verification |
+| Socratic questioning / uncertainty categories | **NOT STARTED** — correctly Phase 5's concern (tied to Chart Lab), not a Phase 4 gap |
+
+Verified in-browser: student asked a real question, got a grounded answer with trust-level-labeled
+citations; a second student's chat history was empty; a direct hijack attempt against another
+student's conversation ID was cleanly rejected (404, no data returned) after the fix.
 
 ## Phase 5 — Chart Lab: NOT STARTED
 
 Chart exercises, annotations, upload analysis, Socratic AI questioning, concept assessment. Needs
-Phase 2's concept tagging and Phase 4's trust-level/security work as prerequisites.
+Phase 2's concept tagging and Phase 4's trust-level/security work as prerequisites — both now in
+place.
 
 ## Phase 6 — Simulator: NOT STARTED
 

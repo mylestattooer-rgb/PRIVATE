@@ -66,6 +66,30 @@ export async function approveDocument(formData: FormData) {
   revalidatePath(`/admin/knowledge/${id}`);
 }
 
+const TRUST_LEVELS = ["A_OFFICIAL", "B_INSTRUCTOR_APPROVED", "C_REFERENCE", "D_COMMUNITY"] as const;
+
+export async function setTrustLevelAction(formData: FormData) {
+  const session = await getSession();
+  if (!session) redirect("/login");
+  const id = String(formData.get("id") ?? "");
+  const trustLevel = String(formData.get("trustLevel") ?? "");
+  if (!id || !(TRUST_LEVELS as readonly string[]).includes(trustLevel)) return;
+
+  const doc = await prisma.document.update({
+    where: { id },
+    data: { trustLevel: trustLevel as (typeof TRUST_LEVELS)[number] },
+  });
+
+  await logAudit({
+    actorId: session.sub,
+    action: "DOCUMENT_UPLOADED",
+    detail: `Set trust level of "${doc.title}" to ${trustLevel}`,
+  });
+
+  revalidatePath("/admin/knowledge");
+  revalidatePath(`/admin/knowledge/${id}`);
+}
+
 export async function deleteDocument(formData: FormData) {
   const session = await getSession();
   if (!session) redirect("/login");

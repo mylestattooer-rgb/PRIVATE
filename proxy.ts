@@ -11,6 +11,7 @@ const LIMITS: Record<string, number> = {
   "/login": 10,
   "/student/login": 10,
   "/api/chat": 30,
+  "/api/student/chat": 30,
 };
 
 const hits = new Map<string, { count: number; resetAt: number }>();
@@ -55,5 +56,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/login", "/student/login", "/api/chat"],
+  matcher: ["/login", "/student/login", "/api/chat", "/api/student/chat"],
 };

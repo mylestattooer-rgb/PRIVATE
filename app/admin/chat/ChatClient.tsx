@@ -9,6 +9,7 @@ type Citation = {
   documentTitle: string;
   isSample: boolean;
   needsReview: boolean;
+  trustLevel: "A_OFFICIAL" | "B_INSTRUCTOR_APPROVED" | "C_REFERENCE" | "D_COMMUNITY";
   score: number;
 };
 
@@ -20,14 +21,25 @@ export type ChatMessage = {
   citations: Citation[];
 };
 
+const TRUST_LABEL: Record<Citation["trustLevel"], string> = {
+  A_OFFICIAL: "official",
+  B_INSTRUCTOR_APPROVED: "instructor-approved",
+  C_REFERENCE: "reference",
+  D_COMMUNITY: "community",
+};
+
 export default function ChatClient({
   conversationId,
   initialMessages,
   studentId,
+  endpoint = "/api/chat",
+  historyBasePath = "/admin/chat",
 }: {
   conversationId: string | null;
   initialMessages: ChatMessage[];
   studentId?: string;
+  endpoint?: string;
+  historyBasePath?: string;
 }) {
   const router = useRouter();
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
@@ -47,7 +59,7 @@ export default function ChatClient({
     ]);
 
     try {
-      const res = await fetch("/api/chat", {
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ message: text, conversationId, studentId }),
@@ -58,7 +70,7 @@ export default function ChatClient({
       setMessages((m) => [...m, data.message]);
 
       if (!conversationId) {
-        startTransition(() => router.push(`/admin/chat?c=${data.conversationId}`));
+        startTransition(() => router.push(`${historyBasePath}?c=${data.conversationId}`));
       } else {
         startTransition(() => router.refresh());
       }
@@ -109,6 +121,7 @@ export default function ChatClient({
                       {c.documentTitle}
                       {c.isSample && " (sample)"}
                       {c.needsReview && " (needs review)"}
+                      {` · ${TRUST_LABEL[c.trustLevel]}`}
                     </span>
                   ))}
                 </div>

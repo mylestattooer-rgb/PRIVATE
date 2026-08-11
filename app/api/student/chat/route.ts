@@ -1,39 +1,51 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/lib/db";
-import { requireAdminApi } from "@/app/lib/auth";
+import { requireStudentApi } from "@/app/lib/auth";
 import { logAudit } from "@/app/lib/audit";
 import { retrieveRelevantChunks } from "@/app/lib/ai/retrieval";
 import { getAiProvider } from "@/app/lib/ai/provider";
+import { studentCan, CAPABILITIES } from "@/app/lib/domains/entitlements";
 
 export async function POST(req: NextRequest) {
-  const session = await requireAdminApi();
+  const session = await requireStudentApi();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const allowed = await studentCan(session.sub, CAPABILITIES.USE_AI_TUTOR);
+  if (!allowed) return NextResponse.json({ error: "AI Tutor is not on your plan yet." }, { status: 403 });
 
   const body = await req.json().catch(() => null);
   const message = typeof body?.message === "string" ? body.message.trim() : "";
   const conversationId = typeof body?.conversationId === "string" ? body.conversationId : undefined;
-  const studentId = typeof body?.studentId === "string" ? body.studentId : undefined;
 
   if (!message) return NextResponse.json({ error: "message is required" }, { status: 400 });
 
-  const conversation = conversationId
-    ? await prisma.conversation.findUniqueOrThrow({ where: { id: conversationId } })
-    : await prisma.conversation.create({
-        data: {
-          scope: "ADMIN",
-          studentId: studentId ?? null,
-          title: message.slice(0, 60),
-        },
-      });
+  // A student can only append to their OWN conversation — never accept an
+  // arbitrary studentId/conversationId from the client the way the admin
+  // route does (an admin may legitimately view any student's conversation;
+  // a student may only ever see their own). Scoped by studentId at the
+  // query layer, not just checked after the fact. findFirst (not
+  // findUniqueOrThrow) so a mismatched id — someone else's conversation, or
+  // a stale/bogus one — returns a clean 404 instead of an unhandled 500.
+  let conversation;
+  if (conversationId) {
+    conversation = await prisma.conversation.findFirst({
+      where: { id: conversationId, studentId: session.sub, scope: "STUDENT" },
+    });
+    if (!conversation) return NextResponse.json({ error: "Conversation not found" }, { status: 404 });
+  } else {
+    conversation = await prisma.conversation.create({
+      data: { scope: "STUDENT", studentId: session.sub, title: message.slice(0, 60) },
+    });
+  }
 
   await prisma.message.create({
     data: { conversationId: conversation.id, role: "USER", content: message, provider: "n/a" },
   });
 
   await logAudit({
-    actorId: session.sub,
     action: "AI_CHAT_QUERY",
     detail: `Query: "${message.slice(0, 120)}"`,
+    metadata: { studentId: session.sub },
   });
 
   const chunks = await retrieveRelevantChunks(message, 5);
@@ -56,9 +68,9 @@ export async function POST(req: NextRequest) {
   });
 
   await logAudit({
-    actorId: session.sub,
     action: "AI_CHAT_RESPONSE",
     detail: `Answered via ${result.providerName} provider (${chunks.length} sources retrieved)`,
+    metadata: { studentId: session.sub },
   });
 
   return NextResponse.json({

@@ -364,6 +364,18 @@ enum DocumentStatus {
   ERROR
 }
 
+// Whose authority this document carries, once confirmed — orthogonal to
+// isSample ("is this fake demo content") and needsReview ("is this real but
+// unconfirmed"): a needsReview doc can already have its intended trustLevel
+// set, with needsReview flagging it isn't confirmed YET. See
+// AI_ARCHITECTURE.md "Planned: knowledge trust levels" for the full design.
+enum TrustLevel {
+  A_OFFICIAL
+  B_INSTRUCTOR_APPROVED
+  C_REFERENCE
+  D_COMMUNITY
+}
+
 model Document {
   id          String         @id @default(cuid())
   title       String
@@ -372,6 +384,7 @@ model Document {
   status      DocumentStatus @default(PROCESSING)
   isSample    Boolean        @default(false) // true for seeded placeholder content, never presented as the real methodology
   needsReview Boolean        @default(false) // true for content extracted/drafted from another source and not yet confirmed accurate by an admin — distinct from isSample (which means "fake demo content"), this means "real but unconfirmed"
+  trustLevel  TrustLevel     @default(C_REFERENCE)
   tags        String? // comma-separated
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
