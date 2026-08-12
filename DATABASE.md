@@ -94,9 +94,13 @@ separately. `Plan`/`planId` also landed, seeded with one `free` plan. Migration:
   randomized question selection from a pool (anti-cheating, brief §53) — today a lesson's questions
   are always shown in full and in the same order; fine for the current single-question demo lesson,
   a real gap once a lesson has enough questions that order/subset matters.
-- **ChartExercise** / **ChartAnswer** — **still NOT YET IMPLEMENTED** — a chart + task (mark
-  structure, find a sweep, etc.) + student's submitted answer, references `Concept`s tested. Needs
-  Chart Lab (Phase 5) infrastructure (image handling) that doesn't exist yet.
+- **ChartExercise** / **ChartAnswer** — **DONE** (Phase 5, 2026-08-11/12) — a chart + task (mark
+  structure, find a sweep, etc.) + student's submitted answer + one AI Socratic follow-up +
+  student's reply, m2m to the `Concept`s it tests. Image handling turned out not to need new
+  infrastructure: the file is validated (type/size) in the Server Action and stored as a `data:`
+  URL directly in the `imageDataUrl` TEXT column — no external blob storage, matching this app's
+  single-SQLite-file architecture. See `ROADMAP.md` Phase 5 and `PROJECT_STATE.md` "Chart Lab" for
+  the real gaps (no concept-tagging UI yet, real-provider mode doesn't send the image to the AI).
 
 ### 2.4 Journal intelligence — DONE (deterministic version; not yet AI-phrased)
 

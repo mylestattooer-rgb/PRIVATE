@@ -95,17 +95,29 @@ manual/simulator/broker — only manual exists, simulator doesn't exist until Ph
 | Trust levels (A-D) | **DONE** — `Document.trustLevel`, both providers factor it in, citation UI shows it, admin sets it from `/admin/knowledge` |
 | Student-facing tutor UI | **DONE** — `/student/ai-tutor`, entitlement-gated, own Route Handler, own conversation scope |
 | AI security hardening (`SECURITY.md` §2.1) | **DONE** — student chat isolated at the query layer; a real isolation-adjacent bug (500 instead of 404 on a mismatched conversation ID) found and fixed during verification |
-| Socratic questioning / uncertainty categories | **NOT STARTED** — correctly Phase 5's concern (tied to Chart Lab), not a Phase 4 gap |
+| Socratic questioning | **DONE** — landed as part of Phase 5 (Chart Lab), see below |
+| Uncertainty categories (FACT/OBSERVATION/INTERPRETATION/HYPOTHESIS/TRADING_X_RULE/UNKNOWN) | **NOT STARTED** — `AI_ARCHITECTURE.md`'s planned tagging scheme isn't wired into Chart Lab's Socratic responses yet |
 
 Verified in-browser: student asked a real question, got a grounded answer with trust-level-labeled
 citations; a second student's chat history was empty; a direct hijack attempt against another
 student's conversation ID was cleanly rejected (404, no data returned) after the fix.
 
-## Phase 5 — Chart Lab: NOT STARTED
+## Phase 5 — Chart Lab: DONE (core loop; to the depth this session scoped it)
 
-Chart exercises, annotations, upload analysis, Socratic AI questioning, concept assessment. Needs
-Phase 2's concept tagging and Phase 4's trust-level/security work as prerequisites — both now in
-place.
+| Item | Status |
+|---|---|
+| Chart exercises (admin upload + task) | **DONE** — `/admin/chart-lab`, `ChartExercise` model, image stored as a `data:` URL in SQLite (5MB cap, png/jpeg/webp only) — no external blob storage needed, so the image-upload-infrastructure blocker this doc previously flagged doesn't apply |
+| Student "what do you see?" answer + AI Socratic follow-up | **DONE** — `/student/chart-lab`, `ChartAnswer` model; `socraticFollowUp()` (`app/lib/ai/provider.ts`) asks one targeted question, never grades or reveals the answer, mock (deterministic question bank, `app/lib/domains/chartlab/socratic.ts`) or real Anthropic call depending on `ANTHROPIC_API_KEY` |
+| Concept assessment (tagging exercises to `Concept`s) | **PARTIAL** — `createChartExercise()` accepts `conceptIds` and the schema supports it, but the admin create form has no UI to set them yet |
+| Annotations / drawing on the chart | **NOT BUILT** — student response is free-text only, no chart-marking tool |
+| AI actually seeing the chart image | **NOT BUILT** — even in real-provider mode, `socraticFollowUp()` sends only the prompt text and the student's typed response to Claude, never the image itself; the follow-up is grounded in what the student wrote, not independent chart analysis |
+| Level-tuned scaffolding (TEACHER→COACH→QUESTIONER→REVIEWER) | **NOT BUILT** — question selection is `priorAnswerCount % bank.length`, not keyed to student `Level` |
+
+Verified in-browser 2026-08-12: admin view renders a seeded exercise with its uploaded image and
+answer count; student view shows a prior real answer, the AI's follow-up question, and the
+student's reply to it, all correctly persisted and rendered on reload. 4 unit tests for the pure
+`pickSocraticQuestion` selector pass; full suite is 51/51. Still entirely uncommitted — see
+`PROJECT_STATE.md` "Chart Lab" for the full gap list and commit checklist.
 
 ## Phase 6 — Simulator: NOT STARTED
 

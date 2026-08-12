@@ -1,9 +1,11 @@
 # PROJECT_STATE — Trading School OS
 
-Last updated: 2026-08-11 (Phase 0 discovery through Phase 4 as this session scoped each phase —
-auth/entitlements, curriculum+quizzes+XP+levels+achievements+mastery, trading journal, and now
+Last updated: 2026-08-12 (Phase 0 discovery through Phase 4 as this session scoped each phase —
+auth/entitlements, curriculum+quizzes+XP+levels+achievements+mastery, trading journal, and
 knowledge trust levels + a student-facing AI Tutor — all built and verified; see below and
-`ROADMAP.md`. Phase 5 (Chart Lab) is next).
+`ROADMAP.md`. Phase 5 (Chart Lab) is now built, wired end-to-end, and browser-verified too — see
+the table below and "Chart Lab" in Outstanding tasks for the real gaps still open before calling
+it fully done).
 
 Read this before starting new work — it should let a fresh session pick up without
 re-deriving context.
@@ -49,17 +51,17 @@ live.
 | Journal AI insights | **WORKING (deterministic)** | `AiInsight`, evidence-linked to the trades it summarizes; gated at 5 trades minimum (never manufactures a conclusion from too little data); text is template-based today, not yet routed through `app/lib/ai/provider.ts` — see `DATABASE.md` §2.4 |
 | Knowledge trust levels | **WORKING** | `Document.trustLevel` (A_OFFICIAL/B_INSTRUCTOR_APPROVED/C_REFERENCE/D_COMMUNITY), admin-settable at `/admin/knowledge`; both AI providers and citation UI factor it in |
 | Student AI Tutor | **WORKING** | `/student/ai-tutor`, entitlement-gated, own Route Handler with student-scoped conversation isolation; verified real Q&A, cross-student isolation, and a rejected hijack attempt |
+| Chart Lab | **WORKING** | `/admin/chart-lab` (upload chart + task) and `/student/chart-lab` (answer "what do you see?" → one AI Socratic follow-up → student reply); `ChartExercise`/`ChartAnswer` models + migration `20260811185640_add_chart_lab`; image stored as a `data:` URL directly in SQLite (no external blob storage needed — the "needs image-upload infrastructure" blocker this doc previously listed doesn't apply, the feature was designed around not needing any). `socraticFollowUp()` in `app/lib/ai/provider.ts` calls `pickSocraticQuestion()` (`app/lib/domains/chartlab/socratic.ts`, deterministic question bank) in mock mode or a real Anthropic call (system-prompted to ask, never grade or reveal) when `ANTHROPIC_API_KEY` is set — not dead code, genuinely wired from student action → domain function → provider. Student answers/follow-ups scoped by `studentId` on both read and write. Seeded with 1 sample exercise (placeholder SVG chart) in `prisma/seed.ts`. 4 unit tests for the pure `pickSocraticQuestion` selection logic pass (`socratic.test.ts`); full suite is 51/51 passing; `npx tsc --noEmit` is clean. **Manually verified live in-browser 2026-08-12**: logged in as admin, viewed the seeded exercise on `/admin/chart-lab` with its uploaded image and answer count rendering correctly; logged in as student `ava.whitfield@example.com` on `/student/chart-lab` and confirmed a full real round trip already existed in the DB — her "what do you see" answer, the AI's mock-mode Socratic follow-up question, and her reply to it, all rendering correctly on reload. Confirms the Server Action → domain function → provider → DB write chain genuinely works end-to-end, not just typechecks. **Real gaps, not yet closed**: (1) no capability/entitlement gate — unlike AI Tutor's `USE_AI_TUTOR`, any logged-in student can use it, undocumented either way; (2) no automated test coverage for the Server Actions/DB writes/upload validation, only the pure question-picker; (3) the admin create form has no concept-tagging UI — `createChartExercise()` accepts `conceptIds` but nothing in `app/admin/chart-lab/page.tsx` lets the admin set them, so `Concept`-tagged assessment (the brief's stated Chart Lab scope) isn't reachable yet; (4) in real (non-mock) `ANTHROPIC_API_KEY` mode, `socraticFollowUp()` sends only the exercise prompt text and the student's typed response to Claude — never the chart image itself, so even "real" mode is language-only, not actually looking at the chart; (5) no student-level-tuned scaffolding — `AI_ARCHITECTURE.md`'s TEACHER→COACH→QUESTIONER→REVIEWER posture shift by `Level` isn't wired in, question selection is purely `priorAnswerCount % bank.length`; (6) it's entirely uncommitted (`app/admin/chart-lab/`, `app/lib/domains/chartlab/`, `app/student/(app)/chart-lab/`, the migration are untracked; `schema.prisma`, both `layout.tsx` nav files, `provider.ts`, `seed.ts` are modified-uncommitted). `AI_ARCHITECTURE.md`, `SECURITY.md` §2.3, `DATABASE.md` §2.3, and `ROADMAP.md` still describe this as "planned"/"not started" and are now stale too. |
 
 ### Still out of scope (schema exists for some, no UI yet)
 
 Marked **NOT YET IMPLEMENTED** — nav shows them as "Coming soon" stubs so the intended full
-platform shape is visible without pretending they work. (Trading journal, quizzing, and the
-student-facing AI Tutor, formerly listed here, are now built — see the table above.)
+platform shape is visible without pretending they work. (Trading journal, quizzing, the
+student-facing AI Tutor, and Chart Lab, formerly listed here, are now built — see the table
+above.)
 
 - **Lead/sales CRM workflows** — `CrmActivity` model exists, only written to by student
   status changes so far; no dedicated lead pipeline UI, no automated follow-ups
-- **Chart Lab / Socratic AI questioning** — Phase 5; needs image-upload infrastructure that
-  doesn't exist yet (`ROADMAP.md`)
 - **Automations** (inactivity detection, automated emails, escalation to human) — `Approval`
   model exists for the human-approval gate this would need, but nothing produces approval
   requests yet
@@ -98,6 +100,16 @@ build in this order. Cross-reference against what Phase 1 already has or has sca
   which currently model simple curriculum + per-student status/score, not gamified levels.
 - **Trading simulator, chart quizzes, challenges, achievements, community, prop-firm prep** — no
   existing schema or scaffolding for any of these; all net-new.
+
+## Content pipeline (proposed, 2026-08-11 — not started)
+
+Separate from the student-app vision above: an automated pipeline (Obsidian vault → Claude
+script generation → HeyGen digital-twin video render → human approval → publish) for lesson
+videos, market breakdowns, and social content. Full audit, HeyGen API research, and proposed
+architecture in [`HEYGEN_CONTENT_PIPELINE.md`](HEYGEN_CONTENT_PIPELINE.md) — conditional GO,
+pending a free-tier quality check before any spend or code. Reuses the existing
+`AiProvider`/`AnthropicProvider` pattern from `app/lib/ai/provider.ts` and the currently-unused
+`Approval` Prisma model; needs new async job-tracking infra (nothing to reuse there).
 
 ## Key architectural decisions
 
@@ -277,9 +289,18 @@ whenever they're ready, didn't want to auto-rename without asking).
 6. **Wire `AiInsight` to the real `AiProvider`** (`DATABASE.md` §2.4) — currently deterministic
    template text; swapping in real phrasing is additive, not urgent while mock-mode is the
    default provider anyway.
-7. **Phase 5 (Chart Lab)** — chart exercises, upload analysis, Socratic AI questioning. All of
-   Phases 1-4 are now done — see `ROADMAP.md`. Needs image-upload handling this codebase doesn't
-   have yet (`SECURITY.md` §2.3).
+7. **Chart Lab — real gaps left, then commit.** The feature (chart exercises, upload, Socratic AI
+   follow-up) is built, wired end-to-end, and now browser-verified (see the table above) — the
+   admin upload → student answer → follow-up → reply flow was confirmed live 2026-08-12, so that
+   item is done. What's left: (a) decide whether it should be entitlement-gated like the AI Tutor
+   or intentionally open to all students, and document the choice; (b) wire concept tagging into
+   the admin create form — `createChartExercise()` already accepts `conceptIds`, only the UI is
+   missing; (c) decide whether the real-provider path should send the chart image to Claude
+   (currently text-only, blind to the actual chart) or whether that's an intentional scope cut for
+   now; (d) commit the untracked files and the modified
+   `schema.prisma`/nav/`provider.ts`/`seed.ts` changes; (e) update `AI_ARCHITECTURE.md`,
+   `SECURITY.md` §2.3, `DATABASE.md` §2.3, and `ROADMAP.md`, which all still describe this as
+   planned/not-started.
 
 ## Next recommended task
 

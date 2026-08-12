@@ -84,16 +84,22 @@ look intelligent** — this is a repeated instruction in the brief and matches t
 as false confidence on the trading-research side. If the methodology doesn't define something, the
 AI says so rather than inventing a Trading X rule.
 
-## Planned: Socratic Chart Lab tutor (Phase 5)
+## Socratic Chart Lab tutor (Phase 5) — DONE (core loop), 2026-08-11/12
 
-When a student uploads a chart, the AI's default posture is to ask "what do you see?" before
-offering an answer, then ask targeted follow-ups (what makes you consider that a sweep, where
-would this idea invalidate, what's the higher-timeframe context, what evidence contradicts your
-bias) rather than immediately telling the student what to think. This is a distinct AI *mode* from
-the existing admin-chat Q&A mode — same provider/retrieval infrastructure underneath, different
-system prompt and turn-taking behavior. Ties directly to `PRODUCT_SPEC.md`'s TEACHER → COACH →
-QUESTIONER → REVIEWER posture shift: a beginner gets more scaffolding in this mode than an advanced
-student, tuned by the student's current level (see `DATABASE.md` §2.5 `Level`).
+When a student answers "what do you see?" on a chart exercise, `socraticFollowUp()`
+(`app/lib/ai/provider.ts`) asks one targeted follow-up (mock mode picks from a fixed question bank
+in `app/lib/domains/chartlab/socratic.ts`; real mode, when `ANTHROPIC_API_KEY` is set, asks Claude
+via a system prompt that forbids grading, confirming, or revealing the read) rather than
+immediately telling the student what to think. Verified live in-browser 2026-08-12.
+
+**Two things described here are still not built, not just unverified:**
+- **The AI never sees the chart image**, even in real-provider mode — `socraticFollowUp()` sends
+  only the exercise prompt text and the student's typed response to Claude, not the `imageDataUrl`.
+  The follow-up is grounded in what the student wrote about the chart, not independent visual
+  analysis of it.
+- **No level-tuned scaffolding.** The TEACHER → COACH → QUESTIONER → REVIEWER posture shift by
+  student `Level` (`DATABASE.md` §2.5) isn't wired in — question selection is deterministic on
+  `priorAnswerCount` only, the same for a brand-new student and an advanced one.
 
 ## Hard boundary: deterministic calculations never come from the AI
 

@@ -92,12 +92,14 @@ blocked. Deliberately in-memory and per-process — matches this app's current s
 SQLite architecture (see `ARCHITECTURE.md`); revisit with a shared store (Redis, etc.) alongside
 the Postgres/multi-instance migration, since a second instance would keep independent counters.
 
-### 2.3 Upload validation (Phase 5, Chart Lab)
+### 2.3 Upload validation (Phase 5, Chart Lab) — DONE
 
-Chart-image uploads (brief §9) are a new untrusted-input surface this codebase doesn't have yet —
-file-type/size validation, and treating image content as opaque (never parsed as executable or
-allowed to influence the AI system prompt beyond "here is an image to analyze") when that feature
-is built.
+Chart-image uploads (brief §9) are validated in `createChartExerciseAction`
+(`app/admin/chart-lab/actions.ts`): MIME type allowlist (png/jpeg/webp only), 5MB size cap, both
+checked server-side before the file is ever touched. Image content is stored and treated as
+opaque — the raw bytes become a `data:` URL in the DB and are never parsed as executable; in
+real-provider mode the image isn't sent to the AI at all (see `AI_ARCHITECTURE.md`'s Chart Lab
+section), so there's currently no path for image content to influence the AI system prompt.
 
 ### 2.4 AI-as-untrusted-subsystem, applied concretely
 
