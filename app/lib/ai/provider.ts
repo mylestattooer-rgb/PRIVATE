@@ -170,3 +170,59 @@ export function getAiProvider(): AiProvider {
   cached = key ? new AnthropicProvider(key) : new MockProvider();
   return cached;
 }
+
+// Chart Lab's Socratic mode (AI_ARCHITECTURE.md "Planned: Socratic Chart Lab
+// tutor") doesn't fit AiProvider.answer()'s retrieval-context shape — there's
+// no knowledge-base lookup here, just one question in response to what the
+// student already wrote. Kept as a standalone function rather than added to
+// the AiProvider interface, so that interface doesn't grow a second,
+// unrelated shape of "answer" for one feature. Mirrors getAiProvider()'s own
+// key-presence check rather than sharing its cached instance.
+export async function socraticFollowUp(input: {
+  exercisePrompt: string;
+  studentResponse: string;
+  priorAnswerCount: number;
+}): Promise<{ text: string; providerName: string }> {
+  const key = process.env.ANTHROPIC_API_KEY;
+  if (!key) {
+    const { pickSocraticQuestion } = await import("@/app/lib/domains/chartlab/socratic");
+    return { text: pickSocraticQuestion(input.priorAnswerCount), providerName: "mock" };
+  }
+
+  const system =
+    "You are a trading mentor running a Socratic chart-reading exercise. The student was shown a " +
+    "chart and a task, and wrote what they see. Your ONLY job is to ask ONE targeted follow-up " +
+    "question that makes them examine their own reasoning more closely — never tell them what the " +
+    "chart shows, never confirm or correct their read, never give the answer. Good follow-ups probe " +
+    "invalidation conditions, higher-timeframe context, whose liquidity is involved, or evidence " +
+    "that contradicts their stated bias. Respond with only the question, nothing else.";
+
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-api-key": key,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-5",
+      max_tokens: 200,
+      system,
+      messages: [
+        {
+          role: "user",
+          content: `Exercise task: ${input.exercisePrompt}\n\nStudent's response: ${input.studentResponse}`,
+        },
+      ],
+    }),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text().catch(() => "");
+    throw new Error(`Anthropic API error ${res.status}: ${errText}`);
+  }
+
+  const data = (await res.json()) as { content: { type: string; text?: string }[] };
+  const text = data.content.find((b) => b.type === "text")?.text ?? "";
+  return { text, providerName: "anthropic" };
+}

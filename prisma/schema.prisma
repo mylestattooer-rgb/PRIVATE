@@ -73,6 +73,7 @@ model Student {
   achievements     UserAchievement[]
   conceptMasteries ConceptMastery[]
   aiInsights       AiInsight[]
+  chartAnswers     ChartAnswer[]
 }
 
 // --- Entitlements (ARCHITECTURE.md "central entitlements module") ----------
@@ -185,9 +186,10 @@ model Concept {
   description String?
   createdAt   DateTime @default(now())
 
-  lessons   Lesson[]
-  questions Question[]
-  masteries ConceptMastery[]
+  lessons        Lesson[]
+  questions      Question[]
+  masteries      ConceptMastery[]
+  chartExercises ChartExercise[]
 }
 
 enum ProgressStatus {
@@ -237,6 +239,42 @@ model QuestionAttempt {
 
   student  Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
   question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+}
+
+// --- Chart Lab (Phase 5) -----------------------------------------------------
+// "What do you see?" — the AI never immediately grades or hands over an
+// answer; it asks one Socratic follow-up question instead
+// (AI_ARCHITECTURE.md "Planned: Socratic Chart Lab tutor"). Deliberately not
+// a multi-round chat thread yet — one question -> one follow-up is the
+// proof of pattern; a fuller back-and-forth is a later iteration once this
+// shape is validated with real use.
+
+model ChartExercise {
+  id           String   @id @default(cuid())
+  title        String
+  prompt       String // the task, e.g. "Mark the most recent liquidity sweep"
+  // Stored as a data: URL, not a file path — this app has no external blob
+  // storage (matches the "zero external infra" ethos elsewhere), and chart
+  // images are small enough for SQLite's TEXT column to hold comfortably at
+  // demo scale. Revisit if/when real usage volume makes that not true.
+  imageDataUrl String
+  createdAt    DateTime @default(now())
+
+  concepts Concept[]
+  answers  ChartAnswer[]
+}
+
+model ChartAnswer {
+  id               String   @id @default(cuid())
+  studentId        String
+  chartExerciseId  String
+  response         String // student's free-text "what do you see"
+  followUpQuestion String? // the AI's one Socratic follow-up
+  followUpResponse String? // student's reply to the follow-up, if given
+  createdAt        DateTime @default(now())
+
+  student       Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  chartExercise ChartExercise @relation(fields: [chartExerciseId], references: [id], onDelete: Cascade)
 }
 
 // --- Progression (Phase 2, DATABASE.md §2.5) --------------------------------
@@ -508,6 +546,7 @@ enum AuditAction {
   LESSON_UPDATED
   LESSON_PUBLISHED
   QUESTION_CREATED
+  CHART_EXERCISE_CREATED
 }
 
 model AuditLog {

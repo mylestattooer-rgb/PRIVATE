@@ -11,6 +11,7 @@ import { createLesson, addLessonVersion, transitionLessonStatus } from "../app/l
 import { createQuestion } from "../app/lib/domains/assessment/questions";
 import { ACHIEVEMENT_KEYS } from "../app/lib/domains/progression/achievements";
 import { createTrade, generateInsight } from "../app/lib/domains/journal/journal";
+import { createChartExercise } from "../app/lib/domains/chartlab/exercises";
 
 const prisma = new PrismaClient();
 
@@ -187,6 +188,34 @@ async function main() {
       });
       console.log("2 sample quiz questions ready.");
     }
+  }
+
+  // --- Chart Lab (Phase 5, sample) ---------------------------------------------
+  // A minimal placeholder "chart" (SVG, not a real screenshot) so the demo has
+  // something real to show without needing an actual chart image on disk.
+  const existingExercises = await prisma.chartExercise.count();
+  if (existingExercises === 0) {
+    const placeholderSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360">
+      <rect width="640" height="360" fill="#0a0a0a"/>
+      <text x="20" y="30" fill="#525252" font-family="monospace" font-size="14">SAMPLE — placeholder chart, not real price data</text>
+      ${[80, 140, 200, 260, 320, 380, 440, 500, 560].map((x, i) => {
+        const open = 150 + (i % 3) * 20;
+        const close = open + (i % 2 === 0 ? -40 : 30);
+        const high = Math.min(open, close) - 15;
+        const low = Math.max(open, close) + 15;
+        const color = close < open ? "#34d399" : "#f87171";
+        return `<line x1="${x}" y1="${high}" x2="${x}" y2="${low}" stroke="${color}" stroke-width="2"/><rect x="${x - 8}" y="${Math.min(open, close)}" width="16" height="${Math.abs(close - open) || 2}" fill="${color}"/>`;
+      }).join("\n")}
+    </svg>`;
+    const imageDataUrl = `data:image/svg+xml;base64,${Buffer.from(placeholderSvg).toString("base64")}`;
+
+    await createChartExercise({
+      title: "Identify the break of structure (sample)",
+      prompt: "What do you see happening in this chart? Where, if anywhere, does structure break?",
+      imageDataUrl,
+      conceptIds: [concepts[0].id],
+    });
+    console.log("1 sample chart exercise ready.");
   }
 
   // --- Demo students ----------------------------------------------------------
