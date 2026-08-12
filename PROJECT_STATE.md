@@ -1,5 +1,7 @@
 # PROJECT_STATE — Trading School OS
 
+**PAUSED 2026-08-12** — chief-architect mandate pause-all directive (see repo-root `feedback_chief_architect_mandate` memory). No cycles until resumed. Resume trigger: explicit resume instruction. (Outstanding Chart Lab gaps — entitlement gate, browser verification, test coverage — remain as documented below for whenever work resumes.)
+
 Last updated: 2026-08-12 (Phase 0 discovery through Phase 4 as this session scoped each phase —
 auth/entitlements, curriculum+quizzes+XP+levels+achievements+mastery, trading journal, and
 knowledge trust levels + a student-facing AI Tutor — all built and verified; see below and
