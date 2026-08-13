@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getStudentSession } from "@/app/lib/auth";
 import { prisma } from "@/app/lib/db";
+import { studentCan, CAPABILITIES } from "@/app/lib/domains/entitlements";
 import { submitChartAnswerAction, submitFollowUpResponseAction } from "./actions";
 
 export default async function StudentChartLabPage() {
@@ -9,6 +10,18 @@ export default async function StudentChartLabPage() {
   // quirk".
   const session = await getStudentSession();
   if (!session) redirect("/student/login");
+
+  const allowed = await studentCan(session.sub, CAPABILITIES.USE_CHART_LAB);
+  if (!allowed) {
+    return (
+      <div className="max-w-2xl">
+        <h1 className="text-2xl font-semibold text-neutral-50">Chart Lab</h1>
+        <p className="mt-4 rounded-lg border border-neutral-800 bg-neutral-900 p-4 text-sm text-neutral-400">
+          Chart Lab isn&apos;t on your current plan yet.
+        </p>
+      </div>
+    );
+  }
 
   const exercises = await prisma.chartExercise.findMany({
     orderBy: { createdAt: "desc" },

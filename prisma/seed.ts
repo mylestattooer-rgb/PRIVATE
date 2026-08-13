@@ -29,10 +29,15 @@ async function main() {
   console.log(`Admin user ready: ${admin.email}`);
 
   // --- Default plan (entitlements, ARCHITECTURE.md) --------------------------
+  // update is non-empty (not `{}`) so re-running the seed against an
+  // already-seeded dev DB syncs in newly added capabilities (e.g.
+  // USE_CHART_LAB, added 2026-08-13) instead of silently leaving the
+  // existing Plan row on its original capabilities string forever.
+  const freePlanCapabilities = "USE_AI_TUTOR,USE_CHART_LAB";
   const freePlan = await prisma.plan.upsert({
     where: { name: "free" },
-    update: {},
-    create: { name: "free", capabilities: "USE_AI_TUTOR" },
+    update: { capabilities: freePlanCapabilities },
+    create: { name: "free", capabilities: freePlanCapabilities },
   });
   console.log(`Plan ready: ${freePlan.name} (${freePlan.capabilities})`);
 

@@ -5,6 +5,7 @@
 
 export const CAPABILITIES = {
   USE_AI_TUTOR: "USE_AI_TUTOR",
+  USE_CHART_LAB: "USE_CHART_LAB",
 } as const;
 
 export type Capability = (typeof CAPABILITIES)[keyof typeof CAPABILITIES];

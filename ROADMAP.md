@@ -112,12 +112,14 @@ student's conversation ID was cleanly rejected (404, no data returned) after the
 | Annotations / drawing on the chart | **NOT BUILT** — student response is free-text only, no chart-marking tool |
 | AI actually seeing the chart image | **NOT BUILT** — even in real-provider mode, `socraticFollowUp()` sends only the prompt text and the student's typed response to Claude, never the image itself; the follow-up is grounded in what the student wrote, not independent chart analysis |
 | Level-tuned scaffolding (TEACHER→COACH→QUESTIONER→REVIEWER) | **NOT BUILT** — question selection is `priorAnswerCount % bank.length`, not keyed to student `Level` |
+| Entitlement gate | **DONE** (2026-08-13) — `USE_CHART_LAB` capability, gated the same way as `USE_AI_TUTOR`: page-level upsell + Server Action-level defense in depth, see `PROJECT_STATE.md` "Chart Lab" |
 
 Verified in-browser 2026-08-12: admin view renders a seeded exercise with its uploaded image and
 answer count; student view shows a prior real answer, the AI's follow-up question, and the
 student's reply to it, all correctly persisted and rendered on reload. 4 unit tests for the pure
-`pickSocraticQuestion` selector pass; full suite is 51/51. Still entirely uncommitted — see
-`PROJECT_STATE.md` "Chart Lab" for the full gap list and commit checklist.
+`pickSocraticQuestion` selector pass; full suite is 51/51. Committed 2026-08-12 (`41105fc`,
+`fa77c07`); the entitlement gate above was added and browser-verified 2026-08-13 — see
+`PROJECT_STATE.md` "Chart Lab" for the remaining gap list.
 
 ## Phase 6 — Simulator: NOT STARTED
 
