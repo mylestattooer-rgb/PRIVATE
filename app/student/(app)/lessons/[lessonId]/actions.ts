@@ -18,7 +18,8 @@ export async function submitAnswerAction(formData: FormData) {
   const selectedIndex = Number(formData.get("selectedIndex") ?? -1);
   if (!lessonId || !questionId || !Number.isInteger(selectedIndex) || selectedIndex < 0) return;
 
-  await gradeAttempt({ studentId: session.sub, questionId, selectedIndex });
+  const result = await gradeAttempt({ studentId: session.sub, questionId, selectedIndex });
+  if (!result) return;
 
   revalidatePath(`/student/lessons/${lessonId}`);
 }

@@ -36,10 +36,16 @@ export async function createQuestion(input: {
 // server-side achievement unlock — all in one transaction so a crash
 // mid-grade can't award XP without recording the attempt, or vice versa.
 export async function gradeAttempt(input: { studentId: string; questionId: string; selectedIndex: number }) {
-  const question = await prisma.question.findUniqueOrThrow({
+  // findFirst, not findUniqueOrThrow: questionId is student-submitted form
+  // input (app/student/(app)/lessons/[lessonId]/actions.ts) -- same footgun,
+  // same fix, as Chart Lab's submitChartAnswer and the AI Tutor's
+  // conversation lookup. A stale/tampered ID returns null instead of an
+  // unhandled 500.
+  const question = await prisma.question.findFirst({
     where: { id: input.questionId },
     include: { concepts: true },
   });
+  if (!question) return null;
   const correct = input.selectedIndex === question.correctIndex;
 
   const priorCorrectAttempts = await prisma.questionAttempt.count({
