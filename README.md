@@ -1,11 +1,14 @@
 # Trading School OS
 
-An AI-powered operating system for a day-trading education business: student CRM, a
-knowledge base of the school's own methodology, an AI assistant that answers from that
-knowledge base with source citations, and an admin dashboard with a full audit log.
+An AI-powered operating system for a day-trading education business: an admin side (student
+CRM, knowledge base, AI assistant, audit log) and a student-facing app (versioned lessons and
+quizzes with XP/levels/achievements, a trading journal with AI-generated insights, an AI Tutor
+grounded in the school's own methodology, and Chart Lab — upload a chart, the AI asks Socratic
+follow-up questions instead of grading).
 
-This is **Phase 1** of a larger vision (see `PROJECT_STATE.md` for what's built vs. planned).
-No automated trade execution exists or is planned — this is an educational/operational tool.
+Phases 0-5 of a larger vision are built (see `PROJECT_STATE.md` for the full breakdown of
+what's WORKING / MOCKED / NOT YET IMPLEMENTED, and `ROADMAP.md` for what's next). No automated
+trade execution exists or is planned — this is an educational/operational tool.
 
 ## Stack
 
@@ -33,14 +36,22 @@ Open http://localhost:3000 — you'll be redirected to `/login`.
 **Demo admin login:** `admin@tradingschool.local` / `ChangeMe123!` (from `.env`'s
 `ADMIN_EMAIL` / `ADMIN_SEED_PASSWORD`, applied by `prisma/seed.ts`).
 
+**Demo student login** (`/student/login`, separate session from admin): any ACTIVE seeded
+student's email (e.g. `ava.whitfield@example.com`) / `ChangeMe123!` (`STUDENT_SEED_PASSWORD`
+if set, same default otherwise). TRIAL/PAUSED/LEAD demo students exist in the CRM but
+deliberately can't log in — see `PROJECT_STATE.md`.
+
 To re-seed at any time: `npm run db:seed`. To inspect the database visually: `npm run db:studio`.
+To run the test suite: `npm test` (integration tests use a separate `prisma/test.db`, never
+`dev.db` — see `prisma/test-db.ts`).
 
 ## What's WORKING vs MOCKED vs NOT YET IMPLEMENTED
 
-See `PROJECT_STATE.md` for the full breakdown. Short version: everything you can click on in
-Phase 1 is real (live database, real retrieval, real auth) — the only mocked piece is AI
-*generation* (not retrieval) when `ANTHROPIC_API_KEY` is unset, and that's labeled in the UI
-itself, not just in docs.
+See `PROJECT_STATE.md` for the full breakdown. Short version: everything built through Phase 5
+is real (live database, real retrieval, real auth, real XP/journal/quiz grading) — the only
+mocked piece is AI *generation* (not retrieval) when `ANTHROPIC_API_KEY` is unset, and that's
+labeled in the UI itself, not just in docs. Not yet built: trading simulator, community,
+prop-firm prep, payments, and school-wide analytics (Phases 6-10, all `NOT STARTED`).
 
 ## Why not NextAuth
 
@@ -61,25 +72,52 @@ See `prisma/schema.prisma` header comment.
 ```
 app/
   lib/
-    db.ts            Prisma client singleton
-    auth.ts           session create/verify/destroy (custom, not NextAuth)
-    audit.ts           audit log writer
+    db.ts                Prisma client singleton
+    auth.ts               session create/verify/destroy (custom, not NextAuth) — separate
+                           cookies for admin vs. student, see ARCHITECTURE.md
+    audit.ts               audit log writer
     ai/
-      provider.ts       AI provider interface + Mock/Anthropic implementations
-      retrieval.ts       TF-IDF chunking + retrieval over the knowledge base
-  login/                login page + server action
+      provider.ts           AI provider interface + Mock/Anthropic implementations,
+                             plus Chart Lab's socraticFollowUp()
+      retrieval.ts           TF-IDF chunking + retrieval over the knowledge base
+    domains/                one folder per bounded domain (ARCHITECTURE.md "modular
+                             monolith") — pure logic + DB-write functions live together,
+                             Server Actions/routes are the only callers
+      entitlements/           Plan-based capability checks (studentCan())
+      learning/                 lesson versioning + status state machine
+      assessment/               quiz grading
+      progression/               XP ledger, levels, achievements, concept mastery
+      journal/                    trade CRUD, deterministic stats, AI insights
+      chartlab/                    exercise CRUD, Socratic answer flow
+  login/                    admin login page + server action
   admin/
-    layout.tsx          session guard + nav shell
-    page.tsx             dashboard
-    students/             CRM: list, create, profile, notes, progress
-    knowledge/             knowledge base: upload, list, render
-    chat/                   AI assistant UI + conversation history
-    audit-log/               audit log viewer
-  api/chat/route.ts        chat POST endpoint (client-driven, not a Server Action —
-                            needs incremental client state for the message list)
+    layout.tsx              session guard + nav shell
+    page.tsx                 dashboard
+    students/                  CRM: list, create, profile, notes, progress
+    curriculum/                 course/module/lesson authoring, quiz authoring
+    knowledge/                   knowledge base: upload, list, render, trust levels
+    chat/                         AI assistant UI + conversation history
+    chart-lab/                     exercise upload + review
+    audit-log/                      audit log viewer
+  student/
+    login/                    student login (separate session, deliberately not under (app)/)
+    (app)/                     gated student surface — route group, no URL segment of its own
+      page.tsx                  dashboard: level/XP, achievements, lesson list
+      lessons/[lessonId]/         lesson content + quiz
+      journal/                     trade log + AI insights
+      ai-tutor/                     student-scoped AI chat
+      chart-lab/                    "what do you see?" + Socratic follow-up
+  api/
+    chat/route.ts              admin chat POST endpoint
+    student/chat/route.ts       student chat POST endpoint (student-isolated)
 prisma/
-  schema.prisma          full data model (see PROJECT_STATE.md for entity summary)
-  seed.ts                 demo data (admin user, 5 students, sample curriculum, sample docs)
+  schema.prisma            full data model (see PROJECT_STATE.md for entity summary)
+  seed.ts                   demo data (admin user, 5 students, sample curriculum, sample docs)
+  test-db.ts                 shared test-database URL constant (vitest only, never dev.db)
+scripts/
+  extract-standalone-repo.sh  rebuilds this repo from the parent monorepo's trading_school/
+                               subtree — see PROJECT_STATE.md "Repo extraction" if you're
+                               reading this from inside the monorepo, not this standalone repo
 ```
 
 ## Environment variables
@@ -89,4 +127,10 @@ See `.env.example`. Key ones:
 - `SESSION_SECRET` — signs session cookies; regenerate for anything beyond local dev
   (`node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`)
 - `ANTHROPIC_API_KEY` — optional; enables the real AI provider instead of the mock one
-- `ADMIN_EMAIL` / `ADMIN_SEED_PASSWORD` — only read by `prisma/seed.ts`
+- `ADMIN_EMAIL` / `ADMIN_SEED_PASSWORD` / `STUDENT_SEED_PASSWORD` — only read by `prisma/seed.ts`
+
+## CI
+
+`.github/workflows/ci.yml` runs lint, `tsc --noEmit`, and the test suite on every push/PR to
+`main` — see that file's own header comment for why it lives inside this repo rather than a
+parent monorepo's `.github/`.
