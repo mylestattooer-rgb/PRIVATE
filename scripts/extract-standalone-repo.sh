@@ -30,7 +30,13 @@ if [ -n "$(git status --short)" ]; then
 fi
 
 echo "== Splitting trading_school/ into trading_school-standalone =="
-git subtree split --prefix=trading_school -b trading_school-standalone -f
+# git subtree split has no force/overwrite flag for -b -- an existing branch
+# of that name must be deleted first (confirmed the hard way 2026-08-14: -f
+# is not a valid switch here, unlike most other git subcommands).
+if git show-ref --verify --quiet refs/heads/trading_school-standalone; then
+  git branch -D trading_school-standalone
+fi
+git subtree split --prefix=trading_school -b trading_school-standalone
 
 # Commits that originated as monorepo-wide checkpoints (bundling trading_school
 # changes with unrelated work in the same commit) can carry a message that
@@ -39,7 +45,7 @@ git subtree split --prefix=trading_school -b trading_school-standalone -f
 # Known example fixed 2026-08-14: two commits referenced Meridian-7 research
 # parameters by name. This list is best-effort, not exhaustive -- always read
 # the full log before pushing, don't rely on a clean grep alone.
-DENYLIST='meridian|quant_platform|reducedRiskMult|inverse-FVG|XAGUSD|fortress layer|MERIDIAN_7'
+DENYLIST='meridian|quant_platform|reducedRiskMult|inverse-FVG|XAGUSD|fortress layer'
 
 echo ""
 echo "== Scanning commit messages against the denylist =="
