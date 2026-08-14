@@ -1,0 +1,35 @@
+# Trading X CI — lives in the standalone trading-school repo (extracted from
+# the XAUUSD monorepo via `git subtree split` so Meridian-7's proprietary
+# strategy research never has to be part of any remote this repo pushes to).
+# No path filter / working-directory needed here, unlike the old monorepo
+# copy this supersedes — this repo's root IS the app root.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: "file:./dev.db"
+      SESSION_SECRET: "ci-only-session-secret-not-used-for-anything-real"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - run: npm ci
+
+      - run: npx prisma migrate deploy
+
+      - run: npm run lint
+
+      - run: npx tsc --noEmit
+
+      - run: npm run test

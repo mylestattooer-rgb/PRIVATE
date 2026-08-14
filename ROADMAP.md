@@ -27,7 +27,7 @@ lessons, progress tracking, basic dashboard, testing, deployment pipeline.
 | **Student auth** | **DONE** — `/student/login`, separate session cookie, `Student.passwordHash`/`authEnabledAt` |
 | **Entitlements** | **DONE** — `app/lib/domains/entitlements/`, one capability (`USE_AI_TUTOR`) wired end-to-end |
 | **Testing** | **DONE (minimal)** — vitest, 14 tests (retrieval TF-IDF scoring, auth session round-trips), wired to `npm test` |
-| **Deployment pipeline** | **DONE (inert)** — `.github/workflows/trading-school-ci.yml` (lint+typecheck+test); repo has no git remote yet so it doesn't run anywhere, added as the ready-to-go extension point |
+| **Deployment pipeline** | **DONE (inert)** — `.github/workflows/ci.yml` (lint+typecheck+test), living inside `trading_school/` itself since 2026-08-14 so it travels with the `git subtree split` extraction (see PROJECT_STATE.md "Repo extraction"); no remote pushed to yet so it doesn't run anywhere |
 | Courses / lessons (versioned) | **DONE** — `Course`/`Lesson`/`LessonVersion`/`Concept`, `/admin/curriculum` authoring UI, verified in-browser |
 
 **A real bug was found and fixed while building this** (not a pre-planned task): `redirect()`

@@ -27,6 +27,33 @@ achievements+mastery, trading journal, and knowledge trust levels + a student-fa
 built and verified; see below and `ROADMAP.md`. Phase 5 (Chart Lab) was built, wired end-to-end, and
 browser-verified too).
 
+## Repo extraction (2026-08-14)
+
+`trading_school/` has never had its own git remote — it's a folder inside the shared XAUUSD monorepo,
+which also holds Meridian-7's live strategy parameters, real backtest P&L, and account numbers (see
+"Methodology extraction" above for why that specific material is treated as protected IP). Standing
+up CI for real meant deciding how to handle that, since GitHub Actions' `actions/checkout` pulls the
+entire repository a workflow lives in — the old path-filtered workflow at the monorepo root would
+have triggered only on `trading_school/**` changes, but still required the *whole* monorepo to live in
+whatever remote it ran against.
+
+**Decision (admin's explicit choice, not a routine call): extract `trading_school/` into its own
+standalone repo via `git subtree split`, rather than push the whole monorepo.** This rewrites
+`trading_school/`'s own commit history onto a new branch with paths flattened to repo-root, containing
+only files that were always under `trading_school/` — Meridian-7/quant_platform/Gate/EA Box code and
+research never becomes part of any object reachable from that branch, so it can never end up in
+whatever remote that branch gets pushed to, private or otherwise. The current working directory is
+unaffected — `trading_school/` keeps living at `C:\Users\Lenovo\XAUUSD\trading_school`, developed
+exactly as before (same dev server, same `launch.json`, same everything); `git subtree push
+--prefix=trading_school <remote> main` is the repeatable command for syncing future changes to the
+standalone remote once one exists. `.github/workflows/ci.yml` was moved from the monorepo root into
+`trading_school/` itself (dropping the `paths`/`working-directory` scoping it needed there, since the
+extracted repo's root **is** the app root) so it travels correctly with the split.
+
+**Still needed from the admin to finish this**: an actual empty remote repository to push to (GitHub
+or otherwise) — creating one requires an account action outside what an agent should do unprompted.
+Once a remote URL exists, `git subtree push` is a one-line command.
+
 ## Test infrastructure (new, 2026-08-14)
 
 Domain functions that touch a real Prisma Client (as opposed to the pure functions
@@ -74,7 +101,7 @@ live.
 | Student login + dashboard | **WORKING** | `/student/login`, gated `/student` dashboard; separate session cookie from admin (`ARCHITECTURE.md` "Auth: two principal types"); only ACTIVE demo students have login enabled, TRIAL/PAUSED/LEAD correctly rejected |
 | Entitlements | **WORKING** | `app/lib/domains/entitlements/`, one capability (`USE_AI_TUTOR`) checked server-side and shown on the student dashboard |
 | Automated tests | **WORKING (minimal)** | vitest, `npm test` — 60 tests: pure-function coverage across retrieval/auth/learning/assessment/progression/journal/chartlab, plus (new 2026-08-14) real Prisma-backed integration tests for Chart Lab's Server Action-facing domain functions — see "Test infrastructure" above |
-| CI | **CONFIGURED, INERT** | `.github/workflows/trading-school-ci.yml` — repo has no git remote yet, so it has never actually run |
+| CI | **CONFIGURED, INERT** | `.github/workflows/ci.yml` (2026-08-14: moved from the monorepo root into `trading_school/` itself, ready to travel with the `git subtree split` extraction below) — no remote pushed to yet, so it has never actually run |
 | Rate limiting | **WORKING** | `proxy.ts` — 10/min on `login`/`student/login`, 30/min on `api/chat`, per-IP; verified 429 after limit, page doesn't break |
 | Curriculum versioning | **WORKING** | `Course`/`Lesson`/`LessonVersion`/`Concept`; `/admin/curriculum` authoring UI; verified full create→review→publish→edit-without-disturbing-published cycle in-browser |
 | Quizzes | **WORKING (basic)** | `Question`/`QuestionAttempt`, deterministic grading; student quiz UI at `/student/lessons/[id]`, admin authoring at `/admin/curriculum`; verified correct (+XP, achievement) and incorrect (no XP, feedback shown) paths |
