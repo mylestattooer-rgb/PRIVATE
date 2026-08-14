@@ -68,6 +68,7 @@ export async function transitionLessonAction(formData: FormData) {
   if (!lessonId || !LESSON_STATUSES.includes(to)) return;
 
   const lesson = await transitionLessonStatus(lessonId, to);
+  if (!lesson) return;
 
   await logAudit({
     actorId: session.sub,

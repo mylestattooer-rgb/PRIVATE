@@ -69,8 +69,14 @@ export async function addLessonVersion(input: {
   return version;
 }
 
+// findFirst, not findUniqueOrThrow: lessonId arrives as form input from the
+// admin's own page (app/admin/curriculum/actions.ts) -- a stale ID after a
+// concurrent delete shouldn't produce an unhandled 500. Same fix already
+// applied to Chart Lab's submitChartAnswer and the AI Tutor's conversation
+// lookup, see those files' comments for the fuller writeup on why.
 export async function transitionLessonStatus(lessonId: string, to: LessonStatusValue) {
-  const lesson = await prisma.lesson.findUniqueOrThrow({ where: { id: lessonId } });
+  const lesson = await prisma.lesson.findFirst({ where: { id: lessonId } });
+  if (!lesson) return null;
   if (!canTransitionLessonStatus(lesson.status, to)) {
     throw new Error(`Cannot transition lesson from ${lesson.status} to ${to}`);
   }

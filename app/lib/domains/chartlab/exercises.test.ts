@@ -14,11 +14,16 @@ import { studentCan, CAPABILITIES } from "@/app/lib/domains/entitlements";
 // repeated `npm test` runs idempotent instead of colliding on unique
 // constraints (Student.email, Plan.name, Concept.slug).
 beforeAll(async () => {
+  // Scoped by this file's own "chartlab-test-" naming convention, not a bare
+  // deleteMany() — Student/Plan/Concept are shared tables other domain test
+  // files (journal.test.ts, lessons.test.ts) also write to, and Vitest runs
+  // test files in parallel workers by default, so an unscoped wipe here is a
+  // real race, not just a style preference.
   await prisma.chartAnswer.deleteMany();
   await prisma.chartExercise.deleteMany();
-  await prisma.student.deleteMany();
-  await prisma.plan.deleteMany();
-  await prisma.concept.deleteMany();
+  await prisma.student.deleteMany({ where: { email: { contains: "chartlab-test-" } } });
+  await prisma.plan.deleteMany({ where: { name: { contains: "chartlab-test-" } } });
+  await prisma.concept.deleteMany({ where: { slug: { contains: "-test" } } });
 });
 
 describe("createChartExercise", () => {
@@ -133,7 +138,7 @@ describe("submitFollowUpResponse", () => {
 
 describe("USE_CHART_LAB entitlement (the check submitChartAnswerAction gates on)", () => {
   it("is false for a student on a plan without the capability", async () => {
-    const plan = await prisma.plan.create({ data: { name: "free-test", capabilities: "USE_AI_TUTOR" } });
+    const plan = await prisma.plan.create({ data: { name: "chartlab-test-free", capabilities: "USE_AI_TUTOR" } });
     const student = await prisma.student.create({
       data: { name: "No Chart Lab", email: "chartlab-test-noaccess@example.com", status: "ACTIVE", planId: plan.id },
     });
