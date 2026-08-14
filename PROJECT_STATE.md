@@ -50,9 +50,31 @@ standalone remote once one exists. `.github/workflows/ci.yml` was moved from the
 `trading_school/` itself (dropping the `paths`/`working-directory` scoping it needed there, since the
 extracted repo's root **is** the app root) so it travels correctly with the split.
 
-**Still needed from the admin to finish this**: an actual empty remote repository to push to (GitHub
-or otherwise) — creating one requires an account action outside what an agent should do unprompted.
-Once a remote URL exists, `git subtree push` is a one-line command.
+**Done, 2026-08-14**: ran the split (`trading_school-standalone` branch, 15 commits, 115 files, tree
+verified to contain zero paths outside what was always under `trading_school/`, `.env` confirmed never
+committed anywhere in the history). Found — and fixed — a real gap in the "paths never leak" reasoning
+above: **subtree split rewrites trees and parents, but never touches commit message text.** Two commits
+in the original monorepo history bundled a `trading_school/` change together with unrelated same-day
+work in one commit (normal practice for this monorepo, not a mistake at the time) — their *messages*
+named the other project and described specific research parameters, even though their *file diffs*,
+scoped to `trading_school/`, were completely clean (one changed only `PROJECT_STATE.md`'s pause banner,
+the other was the initial Next.js scaffold). Reworded both with `git filter-branch --msg-filter`
+(working tree stashed first since filter-branch needs it clean, popped back immediately after — nothing
+in the monorepo's tracked or untracked state was lost). Re-verified clean after: no denylisted terms in
+any commit message, same 115 files, same `.env` result.
+
+**Reusable for next time**: `trading_school/scripts/extract-standalone-repo.sh` re-runs the split and
+scans every resulting commit message against a denylist of known-sensitive terms — it reports and
+blocks (does not push, does not auto-fix) if it finds a hit, since keyword matching can catch known
+patterns but can't guarantee it catches everything; a human/agent should still read the log before
+pushing. Re-running the script now would regenerate from `main`'s original (still-unscrubbed) history
+and correctly get caught by its own denylist scan — the two commits above were fixed only on the
+`trading_school-standalone` branch, not on `main`, since `main`'s own history is shared with every other
+project in the monorepo and isn't this session's place to rewrite.
+
+**Still needed from the admin to finish this**: an actual empty remote repository to push to (GitHub or
+otherwise) — creating one requires an account action outside what an agent should do unprompted. Once a
+remote URL exists, `git push <remote-url> trading_school-standalone:main` is a one-line command.
 
 ## Test infrastructure (new, 2026-08-14)
 
