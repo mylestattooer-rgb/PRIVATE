@@ -2,10 +2,13 @@ import { prisma } from "@/app/lib/db";
 import { createChartExerciseAction } from "./actions";
 
 export default async function AdminChartLabPage() {
-  const exercises = await prisma.chartExercise.findMany({
-    orderBy: { createdAt: "desc" },
-    include: { _count: { select: { answers: true } } },
-  });
+  const [exercises, concepts] = await Promise.all([
+    prisma.chartExercise.findMany({
+      orderBy: { createdAt: "desc" },
+      include: { _count: { select: { answers: true } }, concepts: true },
+    }),
+    prisma.concept.findMany({ orderBy: { name: "asc" } }),
+  ]);
 
   return (
     <div>
@@ -30,6 +33,18 @@ export default async function AdminChartLabPage() {
                   <p className="mt-2 text-xs text-neutral-500">
                     {ex._count.answers} student answer{ex._count.answers === 1 ? "" : "s"}
                   </p>
+                  {ex.concepts.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {ex.concepts.map((c) => (
+                        <span
+                          key={c.id}
+                          className="rounded-full bg-neutral-800 px-2 py-0.5 text-[10px] text-neutral-300"
+                        >
+                          {c.name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -72,6 +87,24 @@ export default async function AdminChartLabPage() {
                 className="mt-1 w-full text-xs text-neutral-300 file:mr-2 file:rounded-md file:border-0 file:bg-neutral-800 file:px-3 file:py-1.5 file:text-neutral-100"
               />
             </div>
+            {concepts.length > 0 && (
+              <div>
+                <label className="block text-xs text-neutral-400">Concepts assessed (optional)</label>
+                <div className="mt-1 space-y-1.5 rounded-md border border-neutral-700 bg-neutral-950 p-2.5">
+                  {concepts.map((c) => (
+                    <label key={c.id} className="flex items-center gap-2 text-xs text-neutral-300">
+                      <input
+                        type="checkbox"
+                        name="conceptIds"
+                        value={c.id}
+                        className="rounded border-neutral-600 bg-neutral-900 text-emerald-500 focus:ring-emerald-500"
+                      />
+                      {c.name}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
             <button
               type="submit"
               className="w-full rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-emerald-500"

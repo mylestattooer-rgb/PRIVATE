@@ -108,7 +108,7 @@ student's conversation ID was cleanly rejected (404, no data returned) after the
 |---|---|
 | Chart exercises (admin upload + task) | **DONE** — `/admin/chart-lab`, `ChartExercise` model, image stored as a `data:` URL in SQLite (5MB cap, png/jpeg/webp only) — no external blob storage needed, so the image-upload-infrastructure blocker this doc previously flagged doesn't apply |
 | Student "what do you see?" answer + AI Socratic follow-up | **DONE** — `/student/chart-lab`, `ChartAnswer` model; `socraticFollowUp()` (`app/lib/ai/provider.ts`) asks one targeted question, never grades or reveals the answer, mock (deterministic question bank, `app/lib/domains/chartlab/socratic.ts`) or real Anthropic call depending on `ANTHROPIC_API_KEY` |
-| Concept assessment (tagging exercises to `Concept`s) | **PARTIAL** — `createChartExercise()` accepts `conceptIds` and the schema supports it, but the admin create form has no UI to set them yet |
+| Concept assessment (tagging exercises to `Concept`s) | **DONE** (2026-08-14) — admin create form has concept checkboxes now, browser-verified with a real tagged exercise |
 | Annotations / drawing on the chart | **NOT BUILT** — student response is free-text only, no chart-marking tool |
 | AI actually seeing the chart image | **NOT BUILT** — even in real-provider mode, `socraticFollowUp()` sends only the prompt text and the student's typed response to Claude, never the image itself; the follow-up is grounded in what the student wrote, not independent chart analysis |
 | Level-tuned scaffolding (TEACHER→COACH→QUESTIONER→REVIEWER) | **NOT BUILT** — question selection is `priorAnswerCount % bank.length`, not keyed to student `Level` |
@@ -118,8 +118,13 @@ Verified in-browser 2026-08-12: admin view renders a seeded exercise with its up
 answer count; student view shows a prior real answer, the AI's follow-up question, and the
 student's reply to it, all correctly persisted and rendered on reload. 4 unit tests for the pure
 `pickSocraticQuestion` selector pass; full suite is 51/51. Committed 2026-08-12 (`41105fc`,
-`fa77c07`); the entitlement gate above was added and browser-verified 2026-08-13 — see
-`PROJECT_STATE.md` "Chart Lab" for the remaining gap list.
+`fa77c07`); the entitlement gate above was added and browser-verified 2026-08-13. **2026-08-14**:
+concept tagging closed out (table above), plus a real integration-test suite for the Server
+Action-facing domain functions (`app/lib/domains/chartlab/exercises.test.ts`, 9 tests against a real
+Prisma-backed test DB) — found and fixed a `findUniqueOrThrow`-on-untrusted-ID bug along the way
+(same class as the AI Tutor route's 2026-08-11 fix). Full suite now 60/60 — see `PROJECT_STATE.md`
+"Chart Lab" and "Test infrastructure" for detail. Only remaining gap: the AI seeing the actual chart
+image, left open as a product decision.
 
 ## Phase 6 — Simulator: NOT STARTED
 

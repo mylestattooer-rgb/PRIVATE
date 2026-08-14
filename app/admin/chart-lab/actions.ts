@@ -20,6 +20,7 @@ export async function createChartExerciseAction(formData: FormData) {
   const title = String(formData.get("title") ?? "").trim();
   const prompt = String(formData.get("prompt") ?? "").trim();
   const file = formData.get("image");
+  const conceptIds = formData.getAll("conceptIds").map(String).filter(Boolean);
 
   if (!title || !prompt || !(file instanceof File) || file.size === 0) return;
   if (file.size > MAX_IMAGE_BYTES) return;
@@ -28,7 +29,7 @@ export async function createChartExerciseAction(formData: FormData) {
   const buffer = Buffer.from(await file.arrayBuffer());
   const imageDataUrl = `data:${file.type};base64,${buffer.toString("base64")}`;
 
-  const exercise = await createChartExercise({ title, prompt, imageDataUrl });
+  const exercise = await createChartExercise({ title, prompt, imageDataUrl, conceptIds });
 
   await logAudit({
     actorId: session.sub,

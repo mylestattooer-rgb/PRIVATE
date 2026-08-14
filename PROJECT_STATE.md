@@ -1,13 +1,45 @@
 # PROJECT_STATE — Trading School OS
 
-**PAUSED 2026-08-12** — chief-architect mandate pause-all directive (see repo-root `feedback_chief_architect_mandate` memory). No cycles until resumed. Resume trigger: explicit resume instruction. (2026-08-13: a narrowly-scoped, explicitly-instructed task closed out Chart Lab's entitlement gate and browser-verification gaps — see the table below — without lifting the project-wide pause; automated test coverage for Chart Lab's Server Actions/DB writes remains open, as does the rest of the outstanding-tasks list below.)
+**RESUMED 2026-08-14** — the admin explicitly resumed real build work after a full audit session (see
+`vault/60-Agent-Runs/` or this session's transcript), scoped to routine engineering completions only:
+closing gaps this doc already named, nothing requiring the admin's own trading/curriculum knowledge or
+an external-account decision (git remote, hosting provider, Postgres instance — those were surfaced
+back to the admin rather than decided unilaterally, per the standing autonomy grant's own boundary).
+Prior state, for history: **PAUSED 2026-08-12** (chief-architect mandate pause-all directive, see
+repo-root `feedback_chief_architect_mandate` memory); 2026-08-13 saw one narrowly-scoped exception
+(Chart Lab's entitlement gate) without lifting the pause.
 
-Last updated: 2026-08-13 (entitlement gate added to Chart Lab, both un-entitled and entitled states
-browser-verified, stale docs corrected — see "Chart Lab" in the table below and in Outstanding
-tasks. Prior entry, 2026-08-12: Phase 0 discovery through Phase 4 as that session scoped each phase
-— auth/entitlements, curriculum+quizzes+XP+levels+achievements+mastery, trading journal, and
-knowledge trust levels + a student-facing AI Tutor — all built and verified; see below and
-`ROADMAP.md`. Phase 5 (Chart Lab) was built, wired end-to-end, and browser-verified too).
+Last updated: 2026-08-14 — full Phase 0-5 audit (verified live in-browser against real seed data, not
+from docs alone — see "Audit findings" below), then closed both real gaps the audit surfaced in
+Chart Lab: (1) the Server Actions/DB-write test-coverage gap (new integration-test DB, `prisma/test.db`,
+wired through `vitest.global-setup.ts` — see "Test infrastructure" below), including a real bug found
+along the way (`submitChartAnswer` used `findUniqueOrThrow` on a student-suppliable ID — same footgun
+already fixed once in the AI Tutor route on 2026-08-11 — now `findFirst`, browser- and test-verified);
+(2) the admin create-form concept-tagging UI (`createChartExercise()` already accepted `conceptIds`,
+only the checkboxes were missing) — built, browser-verified end-to-end with a real submission. Also
+fixed a one-off flaky test (`auth.test.ts` timing out on a cold full-suite run; isolated re-runs were
+always ~1s — bumped `testTimeout` to 15000ms as cheap insurance for CI's always-cold runs, not a logic
+fix, since none was needed). Full suite: 60/60 passing (up from 51), `tsc --noEmit` and `eslint` both
+clean. Prior entry, 2026-08-13: entitlement gate added to Chart Lab, both un-entitled and entitled
+states browser-verified, stale docs corrected. Prior entry, 2026-08-12: Phase 0 discovery through
+Phase 4 as that session scoped each phase — auth/entitlements, curriculum+quizzes+XP+levels+
+achievements+mastery, trading journal, and knowledge trust levels + a student-facing AI Tutor — all
+built and verified; see below and `ROADMAP.md`. Phase 5 (Chart Lab) was built, wired end-to-end, and
+browser-verified too).
+
+## Test infrastructure (new, 2026-08-14)
+
+Domain functions that touch a real Prisma Client (as opposed to the pure functions
+`app/lib/domains/*/[a-z]+.test.ts` already covered) now have a real integration-test path:
+`prisma/test.db`, entirely separate from `prisma/dev.db`, schema-synced by `vitest.global-setup.ts`
+before the suite runs. The sync is skipped when `prisma/test.db` is already newer than
+`prisma/schema.prisma` (mtime check) — `prisma db push` is a ~50s cold CLI invocation on this machine,
+which would otherwise tax every `npm test` run for no reason on an unchanged schema. First test file
+using this pattern: `app/lib/domains/chartlab/exercises.test.ts` (9 tests: exercise creation with/
+without concepts, answer submission including the bad-ID case, follow-up-reply student isolation, and
+the `USE_CHART_LAB` entitlement check itself). Reusable by any other domain that needs the same —
+`journal.ts` and `lessons.ts` are the next-most-obvious candidates, not done in this pass since neither
+was the audit's named gap.
 
 Read this before starting new work — it should let a fresh session pick up without
 re-deriving context.
@@ -41,7 +73,7 @@ live.
 | Extracted-content review workflow | **WORKING** | `Document.needsReview` flag, distinct from `isSample` — see "Methodology extraction" section below |
 | Student login + dashboard | **WORKING** | `/student/login`, gated `/student` dashboard; separate session cookie from admin (`ARCHITECTURE.md` "Auth: two principal types"); only ACTIVE demo students have login enabled, TRIAL/PAUSED/LEAD correctly rejected |
 | Entitlements | **WORKING** | `app/lib/domains/entitlements/`, one capability (`USE_AI_TUTOR`) checked server-side and shown on the student dashboard |
-| Automated tests | **WORKING (minimal)** | vitest, `npm test` — 14 tests covering TF-IDF retrieval scoring and admin/student session round-trips |
+| Automated tests | **WORKING (minimal)** | vitest, `npm test` — 60 tests: pure-function coverage across retrieval/auth/learning/assessment/progression/journal/chartlab, plus (new 2026-08-14) real Prisma-backed integration tests for Chart Lab's Server Action-facing domain functions — see "Test infrastructure" above |
 | CI | **CONFIGURED, INERT** | `.github/workflows/trading-school-ci.yml` — repo has no git remote yet, so it has never actually run |
 | Rate limiting | **WORKING** | `proxy.ts` — 10/min on `login`/`student/login`, 30/min on `api/chat`, per-IP; verified 429 after limit, page doesn't break |
 | Curriculum versioning | **WORKING** | `Course`/`Lesson`/`LessonVersion`/`Concept`; `/admin/curriculum` authoring UI; verified full create→review→publish→edit-without-disturbing-published cycle in-browser |
@@ -291,19 +323,19 @@ whenever they're ready, didn't want to auto-rename without asking).
 6. **Wire `AiInsight` to the real `AiProvider`** (`DATABASE.md` §2.4) — currently deterministic
    template text; swapping in real phrasing is additive, not urgent while mock-mode is the
    default provider anyway.
-7. **Chart Lab — mostly closed out, two real gaps left.** The feature (chart exercises, upload,
-   Socratic AI follow-up) is built, wired end-to-end, browser-verified, committed, and now
-   entitlement-gated (see the table above) — the admin upload → student answer → follow-up → reply
-   flow was confirmed live 2026-08-12, and a second full round trip plus both entitlement states
-   were confirmed live 2026-08-13. (a) **DONE 2026-08-13**: gated the same way as the AI Tutor
-   (`USE_CHART_LAB` capability, page-level upsell + Server Action defense in depth) — decided
-   without asking first, per the standing autonomy grant for routine engineering decisions in this
-   project (`feedback_trading_x_autonomy` memory) and for consistency with the app's one other
-   AI-driven student feature (AI Tutor), which already uses exactly this pattern; (b) wire concept
-   tagging into the admin create form — `createChartExercise()` already accepts `conceptIds`, only
-   the UI is missing; (c) **left open, not decided here** — whether the real-provider path should
-   send the chart image to Claude (currently text-only, blind to the actual chart) is a real
-   product/scope call, not a routine one, per this task's explicit instruction not to make it.
+7. **Chart Lab — core loop, entitlement gate, test coverage, and concept tagging all closed out. One
+   real gap left, deliberately.** The feature (chart exercises, upload, Socratic AI follow-up) is
+   built, wired end-to-end, browser-verified, committed, entitlement-gated, and now test-covered — the
+   admin upload → student answer → follow-up → reply flow was confirmed live 2026-08-12, a second full
+   round trip plus both entitlement states 2026-08-13, and both the concept-tagging UI and a real
+   integration-test suite 2026-08-14. (a) **DONE 2026-08-13**: `USE_CHART_LAB` capability gate,
+   page-level upsell + Server Action defense in depth, consistent with the AI Tutor's existing pattern.
+   (b) **DONE 2026-08-14**: concept-tagging checkboxes on the admin create form
+   (`app/admin/chart-lab/page.tsx`), wired to the `conceptIds` the domain function already accepted;
+   browser-verified with a real submission that persisted and rendered the tag. (c) **left open, not
+   decided here** — whether the real-provider path should send the chart image to Claude (currently
+   text-only, blind to the actual chart) is a real product/scope call, not a routine one, consistent
+   with the standing autonomy grant's own carve-out for calls like this.
 
 ## Next recommended task
 

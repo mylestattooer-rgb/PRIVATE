@@ -26,7 +26,14 @@ export async function createChartExercise(input: {
 // past attempts on this exercise) drives which question comes back in mock
 // mode, so a repeat attempt doesn't feel identical.
 export async function submitChartAnswer(input: { studentId: string; chartExerciseId: string; response: string }) {
-  const exercise = await prisma.chartExercise.findUniqueOrThrow({ where: { id: input.chartExerciseId } });
+  // findFirst, not findUniqueOrThrow: a bad/stale chartExerciseId is
+  // student-suppliable form input, not an invariant — same bug shape (and
+  // same fix) as app/api/student/chat/route.ts's conversationId lookup, see
+  // its comment. Returns null so the calling Server Action's existing
+  // silent-no-op convention for invalid input covers this too, rather than
+  // an unhandled 500.
+  const exercise = await prisma.chartExercise.findFirst({ where: { id: input.chartExerciseId } });
+  if (!exercise) return null;
 
   const priorAnswerCount = await prisma.chartAnswer.count({
     where: { studentId: input.studentId, chartExerciseId: input.chartExerciseId },
