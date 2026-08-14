@@ -72,9 +72,17 @@ and correctly get caught by its own denylist scan — the two commits above were
 `trading_school-standalone` branch, not on `main`, since `main`'s own history is shared with every other
 project in the monorepo and isn't this session's place to rewrite.
 
-**Still needed from the admin to finish this**: an actual empty remote repository to push to (GitHub or
-otherwise) — creating one requires an account action outside what an agent should do unprompted. Once a
-remote URL exists, `git push <remote-url> trading_school-standalone:main` is a one-line command.
+**Pushed, 2026-08-14**: the admin created an empty private GitHub repo (`mylestattooer-rgb/PRIVATE`) and
+`trading_school-standalone` is now live at its `main` branch. A fine-grained PAT was needed for the
+push — GCM (the configured `credential.helper`) hung indefinitely trying to open an interactive
+OAuth prompt this environment can't display, so a token (scoped to just that one repo, Contents +
+Workflows permissions — GitHub separately gates pushes that touch `.github/workflows/*`) was used
+for a single push instead. The admin was advised to revoke it once the push was confirmed landed,
+since it had already done its job. A local remote named `trading-school-standalone` (URL only, no
+credentials stored) was added for future syncs: run
+`trading_school/scripts/extract-standalone-repo.sh`, then `git push trading-school-standalone
+trading_school-standalone:main`. The `.github/workflows/ci.yml` this repo carries will now actually
+run on every push to its `main`, for the first time since Phase 1 first stubbed it out inert.
 
 ## Test infrastructure (new, 2026-08-14)
 
@@ -123,7 +131,7 @@ live.
 | Student login + dashboard | **WORKING** | `/student/login`, gated `/student` dashboard; separate session cookie from admin (`ARCHITECTURE.md` "Auth: two principal types"); only ACTIVE demo students have login enabled, TRIAL/PAUSED/LEAD correctly rejected |
 | Entitlements | **WORKING** | `app/lib/domains/entitlements/`, one capability (`USE_AI_TUTOR`) checked server-side and shown on the student dashboard |
 | Automated tests | **WORKING (minimal)** | vitest, `npm test` — 60 tests: pure-function coverage across retrieval/auth/learning/assessment/progression/journal/chartlab, plus (new 2026-08-14) real Prisma-backed integration tests for Chart Lab's Server Action-facing domain functions — see "Test infrastructure" above |
-| CI | **CONFIGURED, INERT** | `.github/workflows/ci.yml` (2026-08-14: moved from the monorepo root into `trading_school/` itself, ready to travel with the `git subtree split` extraction below) — no remote pushed to yet, so it has never actually run |
+| CI | **LIVE** | `.github/workflows/ci.yml`, now running against `mylestattooer-rgb/PRIVATE` on GitHub since the 2026-08-14 repo extraction (see "Repo extraction" below) — first time it's actually executed since being stubbed out inert in Phase 1 |
 | Rate limiting | **WORKING** | `proxy.ts` — 10/min on `login`/`student/login`, 30/min on `api/chat`, per-IP; verified 429 after limit, page doesn't break |
 | Curriculum versioning | **WORKING** | `Course`/`Lesson`/`LessonVersion`/`Concept`; `/admin/curriculum` authoring UI; verified full create→review→publish→edit-without-disturbing-published cycle in-browser |
 | Quizzes | **WORKING (basic)** | `Question`/`QuestionAttempt`, deterministic grading; student quiz UI at `/student/lessons/[id]`, admin authoring at `/admin/curriculum`; verified correct (+XP, achievement) and incorrect (no XP, feedback shown) paths |
