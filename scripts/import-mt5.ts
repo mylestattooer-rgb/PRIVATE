@@ -15,7 +15,7 @@
  */
 
 import { readFileSync, writeFileSync } from "node:fs";
-import { parseMt5Export, spreadPointsToBps } from "../app/lib/domains/research";
+import { aggregateToDaily, isIntraday, parseMt5Export, spreadPointsToBps } from "../app/lib/domains/research";
 
 function arg(name: string): string | null {
   const i = process.argv.indexOf(`--${name}`);
@@ -88,9 +88,19 @@ function main(): void {
     console.log(`  since that column is the most valuable part of the file.`);
   }
 
+  // MT5 exports the terminal's native M1 storage, so a "daily history" arrives
+  // as minute bars. Writing those with the time stripped gives one row per
+  // minute sharing one date per day, which reads downstream as a hundred
+  // thousand daily returns of about zero.
+  const intraday = isIntraday(result.bars);
+  const daily = intraday ? aggregateToDaily(result.bars) : result.bars;
+  if (intraday) {
+    console.log(`\n  Input is intraday — aggregated ${result.bars.length} bars into ${daily.length} daily bars.`);
+  }
+
   const out = `data/${symbol}_1d.csv`;
   const lines = ["date,open,high,low,close,volume"];
-  for (const b of result.bars) {
+  for (const b of daily) {
     lines.push(`${b.time.slice(0, 10)},${b.open},${b.high},${b.low},${b.close},${b.volume}`);
   }
   writeFileSync(out, lines.join("\n") + "\n");

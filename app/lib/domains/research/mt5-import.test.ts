@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseMt5Export, spreadPointsToBps } from "./mt5-import";
+import { aggregateToDaily, isIntraday, parseMt5Export, spreadPointsToBps } from "./mt5-import";
 
 const TAB = "\t";
 
@@ -135,5 +135,63 @@ describe("spreadPointsToBps", () => {
   it("is zero for a nonsensical price or point size", () => {
     expect(spreadPointsToBps(10, 0.01, 0)).toBe(0);
     expect(spreadPointsToBps(10, 0, 100)).toBe(0);
+  });
+});
+
+describe("aggregateToDaily", () => {
+  // MT5's Symbols window exports M1, so a "daily history" arrives as minute
+  // bars. The first real file imported was 99,879 M1 bars across 70 days.
+  const minutes = [
+    ["<DATE>", "<TIME>", "<OPEN>", "<HIGH>", "<LOW>", "<CLOSE>", "<TICKVOL>", "<SPREAD>"].join(TAB),
+    ["2026.06.11", "03:51:00", "0.97530", "0.97535", "0.97511", "0.97519", "123", "8"].join(TAB),
+    ["2026.06.11", "03:52:00", "0.97519", "0.97600", "0.97400", "0.97523", "128", "10"].join(TAB),
+    ["2026.06.11", "03:53:00", "0.97523", "0.97530", "0.97516", "0.97528", "92", "300"].join(TAB),
+    ["2026.06.12", "03:51:00", "0.97600", "0.97700", "0.97550", "0.97650", "50", "4"].join(TAB),
+  ].join("\n");
+
+  it("detects an intraday series", () => {
+    expect(isIntraday(parseMt5Export(minutes).bars)).toBe(true);
+  });
+
+  it("does not call a one-bar-per-day series intraday", () => {
+    const daily = [
+      ["<DATE>", "<OPEN>", "<HIGH>", "<LOW>", "<CLOSE>"].join(TAB),
+      ["2026.06.11", "1", "2", "1", "1.5"].join(TAB),
+      ["2026.06.12", "1.5", "2.5", "1.4", "2"].join(TAB),
+    ].join("\n");
+    expect(isIntraday(parseMt5Export(daily).bars)).toBe(false);
+  });
+
+  it("collapses minute bars into one bar per day", () => {
+    const days = aggregateToDaily(parseMt5Export(minutes).bars);
+    expect(days).toHaveLength(2);
+    expect(days[0].time).toBe("2026-06-11T00:00:00.000Z");
+  });
+
+  it("takes the day's first open, last close, and the extremes between", () => {
+    const [first] = aggregateToDaily(parseMt5Export(minutes).bars);
+    expect(first.open).toBe(0.9753); // first bar's open
+    expect(first.close).toBe(0.97528); // last bar's close
+    expect(first.high).toBe(0.976); // highest high, from the middle bar
+    expect(first.low).toBe(0.974); // lowest low, from the middle bar
+  });
+
+  it("sums volume across the day", () => {
+    expect(aggregateToDaily(parseMt5Export(minutes).bars)[0].volume).toBe(343);
+  });
+
+  it("carries the day's MEDIAN spread, not a spike", () => {
+    // 8, 10, 300 — the mean would be 106, which is a cost never actually paid.
+    expect(aggregateToDaily(parseMt5Export(minutes).bars)[0].spreadPoints).toBe(10);
+  });
+
+  it("produces one row per date, which is the bug this exists to prevent", () => {
+    const days = aggregateToDaily(parseMt5Export(minutes).bars);
+    const dates = days.map((d) => d.time.slice(0, 10));
+    expect(new Set(dates).size).toBe(dates.length);
+  });
+
+  it("handles an empty series", () => {
+    expect(aggregateToDaily([])).toEqual([]);
   });
 });

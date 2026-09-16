@@ -190,3 +190,57 @@ export function spreadPointsToBps(spreadPoints: number, pointSize: number, price
   if (price <= 0 || pointSize <= 0) return 0;
   return ((spreadPoints * pointSize) / price) * 10_000;
 }
+
+/**
+ * Collapse intraday bars into daily ones.
+ *
+ * MT5's Symbols window exports the timeframe the terminal stores natively,
+ * which is M1 — so a "daily history" export arrives as a hundred thousand
+ * minute bars. Writing those out with the time stripped produces a file with
+ * one row per minute and one date per day, which every downstream calculation
+ * then reads as a hundred thousand daily returns of roughly zero. The first
+ * real file imported did exactly that.
+ *
+ * Aggregation is by UTC calendar day: the day's open is its first bar's open,
+ * the close its last bar's close, the high and low the extremes across all of
+ * them, and volume the sum. Spread is carried as the day's MEDIAN, since a
+ * daily bar has no single spread and the mean is dominated by news spikes.
+ */
+export function aggregateToDaily(bars: Mt5Bar[]): Mt5Bar[] {
+  if (bars.length === 0) return [];
+
+  const byDay = new Map<string, Mt5Bar[]>();
+  for (const bar of bars) {
+    const day = bar.time.slice(0, 10);
+    const bucket = byDay.get(day);
+    if (bucket) bucket.push(bar);
+    else byDay.set(day, [bar]);
+  }
+
+  return [...byDay.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([day, dayBars]) => {
+      const ordered = [...dayBars].sort((a, b) => a.time.localeCompare(b.time));
+      const spreads = ordered
+        .map((b) => b.spreadPoints)
+        .filter((s): s is number => s !== null)
+        .sort((a, b) => a - b);
+
+      return {
+        time: `${day}T00:00:00.000Z`,
+        open: ordered[0].open,
+        high: Math.max(...ordered.map((b) => b.high)),
+        low: Math.min(...ordered.map((b) => b.low)),
+        close: ordered[ordered.length - 1].close,
+        volume: ordered.reduce((sum, b) => sum + b.volume, 0),
+        spreadPoints: spreads.length > 0 ? spreads[Math.floor(spreads.length / 2)] : null,
+      };
+    });
+}
+
+/** True when the series is finer than daily — i.e. more than one bar per day. */
+export function isIntraday(bars: Mt5Bar[]): boolean {
+  if (bars.length < 2) return false;
+  const days = new Set(bars.map((b) => b.time.slice(0, 10)));
+  return bars.length > days.size;
+}
