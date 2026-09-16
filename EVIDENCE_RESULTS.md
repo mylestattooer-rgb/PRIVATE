@@ -44,11 +44,60 @@
 > year — **+63.47%** over the same window. The strategy loses to a savings
 > account at every swap rate tested, by a factor of five to a hundred.
 >
+> **⚠ The sentence above is wrong and is retracted — see the next note.** The
+> comparison credited the cash deposit with interest while crediting the
+> strategy's own idle cash with nothing. That is not a like-for-like test, and
+> the conclusion drawn from it does not stand.
+>
 > Two conclusions follow. **The swap rate is no longer worth collecting** for
 > this purpose: no value in or beyond the plausible range changes the answer.
 > And the EURUSD finding generalises — **buy-and-hold is a broken baseline for
 > any financed instrument, not just currencies.** Cash is the honest comparison
 > throughout, and protocol 2 already adopted it.
+
+> **Cash interest, 2026-09-16 — a one-sided model, and a retraction.**
+>
+> The note above concluded that the strategy "loses to a savings account at every
+> swap rate, by a factor of five to a hundred." **That was wrong**, and the error
+> was mine rather than the data's.
+>
+> The model charged financing on borrowed money and credited **nothing** on
+> money held. A strategy that is flat most of the time keeps most of its capital
+> in cash, so it was being compared against a cash benchmark that earned
+> interest while it earned none. Measured, the missing term is worth roughly 48%
+> of starting capital over this window — more than four times the strategy's
+> entire modelled return.
+>
+> `applyCashInterest` fixes it, and `--cash-sweep` shows the effect:
+>
+> | Cash %/yr | Strategy | Cash itself | Excess | Excess /yr |
+> |---|---|---|---|---|
+> | 0% | +7.95% | 0.00% | +7.95% | **+0.60%** |
+> | 1% | +21.14% | +13.59% | +7.55% | **+0.57%** |
+> | 2% | +36.50% | +28.87% | +7.63% | **+0.58%** |
+> | 4% | +72.88% | +65.27% | +7.61% | **+0.57%** |
+>
+> The excess is **flat at roughly +0.58%/yr across the whole sweep**, which is
+> what a model that treats borrowed and lent money consistently should produce.
+> That flatness is the check that the fix is right.
+>
+> **The corrected verdict.** The strategy does beat cash — by about 0.58% a
+> year. It does not lose to a savings account, and I should not have said so.
+> But 0.58%/yr is not a reason to run an unattended trading system: it comes
+> with drawdown, execution risk and operational risk that a deposit does not,
+> and over the same window simply **owning gold outright returned roughly
+> +130%**. The rule still fails; it fails for the ordinary reason that it is
+> barely distinguishable from doing nothing, not for the dramatic reason I
+> previously gave.
+>
+> **A second inconsistency, found and recorded but not fixed.** Cash accounting
+> debits the full notional on open, as a cash-funded equity account would, while
+> financing is charged on that same notional, as a margin account would. A
+> position paid for outright should not also pay financing. Resolving it needs a
+> per-instrument margin requirement from the broker's symbol specification,
+> which is not available. Measured size on this study: about 2.5 points of
+> return over 12.5 years at 3%/yr — it moves no verdict, and it is written into
+> `portfolio.ts` so the next person does not rediscover it.
 
 Run under `EVIDENCE_PROTOCOL.md`, committed before any backtest existed.
 

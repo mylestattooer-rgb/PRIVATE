@@ -29,6 +29,20 @@ const SPLIT_DATE = "2020-01-01T00:00:00.000Z";
 const STARTING_CASH = 10_000;
 
 /**
+ * Interest credited on uninvested cash, annualised. ASSUMED, like financing.
+ *
+ * Defaults to 0 so previously published numbers reproduce unchanged, but 0 is
+ * not neutral — a strategy that is flat most of the time holds most of its
+ * capital in cash, and paying it nothing understates it by more than its own
+ * returns. `--cash-sweep` shows the sensitivity rather than picking one value
+ * and hiding the choice.
+ *
+ * For reference when choosing one: the 2007-2019 in-sample window was mostly a
+ * zero-rate era, so something near 1% is defensible there; 2020 onward is not.
+ */
+let CASH_RATE_ANNUAL_PCT = 0;
+
+/**
  * Protocol §4 costs. Spread for GCUSD is now MEASURED, the rest are still
  * assumed — the distinction is marked per row rather than left to memory.
  *
@@ -83,6 +97,7 @@ async function run(symbol: string, bars: ReturnType<typeof parseCsvBars>, config
     startingCash: STARTING_CASH,
     limits: DEFAULT_RISK_LIMITS,
     financingBpsPerBar: costs.financingBpsPerBar,
+    cashRateBpsPerBar: (CASH_RATE_ANNUAL_PCT / INSTRUMENTS[symbol].barsPerYear) * 100,
     dataSourceId: `fmp:${symbol}:1d`,
     periodsPerYear: INSTRUMENTS[symbol].barsPerYear,
   });
@@ -211,6 +226,43 @@ async function swapSweep(symbol: string): Promise<void> {
   console.log(`  whether the unmeasured swap rate could plausibly change the verdict.\n`);
 }
 
+/**
+ * How much does crediting idle cash change the picture?
+ *
+ * The strategy holds most of its capital as cash; buy-and-hold holds almost
+ * none. So a higher cash rate lifts the strategy and barely touches the
+ * baseline — the mirror image of the swap sweep, and for the same structural
+ * reason. Both are reported so neither can be cherry-picked.
+ */
+async function cashSweep(symbol: string): Promise<void> {
+  const { inSample } = splitBars(loadBars(symbol), SPLIT_DATE);
+  const best: Config = { fast: 20, slow: 50, atrStop: 3, rewardToRisk: 0 };
+
+  console.log(`\n=== CASH-RATE SENSITIVITY: ${symbol} ===`);
+  console.log(`${inSample.length} bars, ${inSample[0].time.slice(0, 10)} -> ${inSample[inSample.length - 1].time.slice(0, 10)}`);
+  console.log(`config fixed at the in-sample best; spread MEASURED; swap at the assumed ${INSTRUMENTS[symbol].annualFinancingPct}%/yr\n`);
+  console.log(`  ${"cash %/yr".padEnd(12)}${"strategy".padStart(11)}${"buy & hold".padStart(13)}${"cash itself".padStart(14)}  beats cash?`);
+
+  const original = CASH_RATE_ANNUAL_PCT;
+  const years = inSample.length / INSTRUMENTS[symbol].barsPerYear;
+  for (const rate of [0, 1, 2, 4]) {
+    CASH_RATE_ANNUAL_PCT = rate;
+    const result = await run(symbol, inSample, best);
+    const baseline = buyAndHold(inSample, STARTING_CASH, costModel(symbol));
+    const cashItself = ((1 + rate / 100) ** years - 1) * 100;
+    const beats = result.metrics.totalReturnPct > cashItself;
+    console.log(
+      `  ${`${rate}%`.padEnd(12)}${pct(result.metrics.totalReturnPct).padStart(11)}` +
+        `${pct(baseline.totalReturnPct).padStart(13)}${pct(cashItself).padStart(14)}  ${beats ? "yes" : "NO"}`,
+    );
+  }
+  CASH_RATE_ANNUAL_PCT = original;
+
+  console.log(`\n  The strategy sits in cash most of the time and the baseline does not,`);
+  console.log(`  so a higher rate lifts the strategy and barely moves buy-and-hold. The`);
+  console.log(`  column that matters is the last one: holding the cash outright.\n`);
+}
+
 async function main(): Promise<void> {
   const argv = process.argv.slice(2);
   const flag = (name: string) => argv.includes(`--${name}`);
@@ -221,6 +273,10 @@ async function main(): Promise<void> {
   const symbolIndex = argv.indexOf("--symbol");
   const symbol = symbolIndex === -1 ? "EURUSD" : argv[symbolIndex + 1];
 
+  const cashIndex = argv.indexOf("--cash-rate");
+  if (cashIndex !== -1) CASH_RATE_ANNUAL_PCT = Number(argv[cashIndex + 1]);
+
+  if (flag("cash-sweep")) return cashSweep(symbol);
   if (flag("swap-sweep")) return swapSweep(symbol);
   if (flag("sweep")) return sweep(symbol);
 

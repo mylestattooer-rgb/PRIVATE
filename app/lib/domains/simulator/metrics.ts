@@ -28,6 +28,9 @@ export type BacktestMetrics = {
   tradeCount: number;
   commissionPaid: number;
   financingPaid: number;
+  /** Interest credited on uninvested cash. Reported separately from costs
+   *  because it is income, and netting it into a cost figure would hide both. */
+  interestEarned: number;
   /** Commission + financing. The number to compare against gross profit when
    *  deciding whether a strategy is paying for itself or for its broker. */
   totalCosts: number;
@@ -79,7 +82,7 @@ export function sharpeRatio(curve: EquityPoint[], periodsPerYear = 252): number 
   return Number(((mean / stdDev) * Math.sqrt(periodsPerYear)).toFixed(4));
 }
 
-export type CostTotals = { commission: number; financing: number };
+export type CostTotals = { commission: number; financing: number; interest: number };
 
 export function computeMetrics(
   curve: EquityPoint[],
@@ -104,6 +107,7 @@ export function computeMetrics(
     tradeCount: trades.length,
     commissionPaid: roundCash(costs.commission),
     financingPaid: roundCash(costs.financing),
+    interestEarned: roundCash(costs.interest),
     totalCosts: roundCash(costs.commission + costs.financing),
     journal: computeJournalStats(trades),
   };

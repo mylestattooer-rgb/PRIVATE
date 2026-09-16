@@ -24,7 +24,14 @@
 
 import { assertValidSeries } from "./datasource";
 import { computeMetrics, type BacktestMetrics } from "./metrics";
-import { applyFill, applyFinancing, computeEquity, emptyAccount, findPosition } from "./portfolio";
+import {
+  applyCashInterest,
+  applyFill,
+  applyFinancing,
+  computeEquity,
+  emptyAccount,
+  findPosition,
+} from "./portfolio";
 import {
   assessSignal,
   DEFAULT_RISK_LIMITS,
@@ -90,6 +97,11 @@ export type BacktestConfig = {
    *  points. On a leveraged instrument this is often the difference between a
    *  strategy that works and one that pays its broker to lose slowly. */
   financingBpsPerBar?: number;
+  /** Interest credited per BAR on uninvested cash, in basis points. Defaults to
+   *  0 for backward compatibility, but 0 is not a neutral choice: a strategy
+   *  that is flat most of the time holds most of its capital in cash, and
+   *  paying it nothing understates it by more than its own returns. */
+  cashRateBpsPerBar?: number;
 };
 
 export type BacktestResult = {
@@ -185,6 +197,7 @@ export async function runBacktest(config: BacktestConfig): Promise<BacktestResul
     flattenOnKillSwitch = true,
     periodsPerYear = 252,
     financingBpsPerBar = 0,
+    cashRateBpsPerBar = 0,
   } = config;
 
   if (adapter.isLive) throw new LiveExecutionError(adapter.name);
@@ -202,7 +215,7 @@ export async function runBacktest(config: BacktestConfig): Promise<BacktestResul
       trades: [],
       rejections: [],
       killSwitchTrips: [],
-      metrics: computeMetrics([], [], { commission: 0, financing: 0 }, periodsPerYear),
+      metrics: computeMetrics([], [], { commission: 0, financing: 0, interest: 0 }, periodsPerYear),
       finalAccount: account,
     };
   }
@@ -255,6 +268,10 @@ export async function runBacktest(config: BacktestConfig): Promise<BacktestResul
     // Financing on whatever survived the exits above, charged before equity is
     // marked so the cost shows up in the curve on the bar it was incurred.
     account = applyFinancing(account, { [symbol]: bar.close }, financingBpsPerBar);
+
+    // Interest on whatever capital is not deployed. Charged and credited in the
+    // same place so neither can be silently dropped.
+    account = applyCashInterest(account, cashRateBpsPerBar);
 
     // 3. Mark to this bar's close and re-evaluate the daily-loss halt.
     const day = tradingDay(bar.time);
@@ -349,7 +366,11 @@ export async function runBacktest(config: BacktestConfig): Promise<BacktestResul
     metrics: computeMetrics(
       equityCurve,
       trades,
-      { commission: account.commissionPaid, financing: account.financingPaid },
+      {
+        commission: account.commissionPaid,
+        financing: account.financingPaid,
+        interest: account.interestEarned,
+      },
       periodsPerYear,
     ),
     finalAccount: account,

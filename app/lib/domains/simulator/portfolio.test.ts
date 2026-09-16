@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { applyFill, applyFinancing, computeEquity, emptyAccount, marketValue, unrealizedPnl } from "./portfolio";
+import {
+  applyCashInterest,
+  applyFill,
+  applyFinancing,
+  computeEquity,
+  emptyAccount,
+  marketValue,
+  unrealizedPnl,
+} from "./portfolio";
 import type { Fill, Order, Position } from "./types";
 
 const order = (overrides: Partial<Order> = {}): Order => ({
@@ -203,7 +211,7 @@ describe("valuation helpers", () => {
   });
 
   it("falls back to entry price when a mark is missing", () => {
-    const account = { cash: 0, positions: [long], realizedPnl: 0, commissionPaid: 0, financingPaid: 0 };
+    const account = { cash: 0, positions: [long], realizedPnl: 0, commissionPaid: 0, financingPaid: 0, interestEarned: 0 };
     expect(computeEquity(account, {})).toBe(1_000);
   });
 });
@@ -241,5 +249,50 @@ describe("applyFinancing", () => {
 
   it("falls back to entry price when a mark is missing", () => {
     expect(applyFinancing(withPosition(), {}, 1).financingPaid).toBe(0.1);
+  });
+});
+
+describe("applyCashInterest", () => {
+  it("credits interest on uninvested cash and tracks it separately", () => {
+    const credited = applyCashInterest(emptyAccount(10_000), 10);
+    expect(credited.cash).toBe(10_010);
+    expect(credited.interestEarned).toBe(10);
+  });
+
+  it("earns on the remainder after a position is opened, not the whole account", () => {
+    const opened = applyFill(emptyAccount(10_000), order(), fill()).account;
+    // 10 units at 100 plus 2 commission leaves 8,998 in cash; 10bps on that is
+    // 8.998, which this module rounds to cents like every other cash figure.
+    expect(applyCashInterest(opened, 10).interestEarned).toBe(9);
+  });
+
+  it("pays nothing on a zero or negative cash balance", () => {
+    expect(applyCashInterest(emptyAccount(0), 10).interestEarned).toBe(0);
+    expect(applyCashInterest({ ...emptyAccount(0), cash: -500 }, 10).interestEarned).toBe(0);
+  });
+
+  it("does not pay a short seller interest on their own sale proceeds", () => {
+    // Shorts credit proceeds to cash in this model. Treating that as a deposit
+    // would manufacture a return out of an accounting convention.
+    const short = applyFill(
+      emptyAccount(10_000),
+      order({ side: "sell", positionSide: "short", stopPrice: 110 }),
+      fill({ side: "sell", positionSide: "short" }),
+    ).account;
+    const credited = applyCashInterest(short, 10);
+    // Interest accrues on the cash balance, but equity still nets the short's
+    // liability, so the position itself earns nothing from being short.
+    expect(credited.interestEarned).toBe(11);
+    expect(computeEquity(credited, { AAPL: 100 })).toBe(10_009);
+  });
+
+  it("is a no-op at a zero rate", () => {
+    expect(applyCashInterest(emptyAccount(10_000), 0).interestEarned).toBe(0);
+  });
+
+  it("compounds across periods", () => {
+    let account = emptyAccount(10_000);
+    for (let i = 0; i < 10; i++) account = applyCashInterest(account, 10);
+    expect(account.interestEarned).toBeGreaterThan(100);
   });
 });

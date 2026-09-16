@@ -100,6 +100,12 @@ export type AccountState = {
    *  are diagnosed differently: high commission means trade less, high financing
    *  means hold shorter. */
   financingPaid: number;
+  /** Cumulative interest credited on uninvested cash. A strategy that is flat
+   *  most of the time holds most of its capital as cash, so omitting this
+   *  understates it by a term that can exceed everything the strategy does —
+   *  measured at roughly 48% of starting capital over a 12.5-year gold window
+   *  against a modelled strategy return of 10%. */
+  interestEarned: number;
 };
 
 export type ExitReason = "stop" | "target" | "signal" | "end_of_data" | "kill_switch";

@@ -12,14 +12,37 @@
 //
 // Equity is cash plus market value, so an unmoved short nets to exactly the
 // pre-trade equity (the credited proceeds and the liability cancel) and a
-// favourable move shows up as profit. No margin, no borrow cost, no interest —
-// see README.md in this folder for the full list of what the model omits.
+// favourable move shows up as profit.
+//
+// **Funding model — a known inconsistency, stated rather than hidden.** Cash
+// accounting above is cash-funded: opening a long debits the FULL notional, as
+// a cash equity account would. `applyFinancing` then charges on that same
+// notional every bar, as a margin/CFD account would. A position paid for
+// outright should not also pay financing, so the two together overstate the
+// cost of carry. Resolving it properly needs a per-instrument margin
+// requirement, which comes from the broker's symbol specification and is not
+// available. Measured size on the gold study: about 2.5 points of return over
+// 12.5 years at 3%/yr, so it does not move any verdict — recorded here so the
+// next person does not have to rediscover it.
+//
+// Interest on uninvested cash IS now modelled (`applyCashInterest`). Omitting
+// it was the larger error by far: a strategy that is flat most of the time
+// holds most of its capital in cash, and at a 4% rate that term is worth
+// roughly 48% of starting capital over the same window — four times the
+// strategy's entire modelled return.
 
 import { roundCash } from "./money";
 import type { AccountState, ClosedTrade, ExitReason, Fill, Order, Position } from "./types";
 
 export function emptyAccount(startingCash: number): AccountState {
-  return { cash: startingCash, positions: [], realizedPnl: 0, commissionPaid: 0, financingPaid: 0 };
+  return {
+    cash: startingCash,
+    positions: [],
+    realizedPnl: 0,
+    commissionPaid: 0,
+    financingPaid: 0,
+    interestEarned: 0,
+  };
 }
 
 export function marketValue(position: Position, markPrice: number): number {
@@ -110,6 +133,7 @@ export function applyFill(
         realizedPnl: account.realizedPnl,
         commissionPaid: roundCash(account.commissionPaid + fill.commission),
         financingPaid: account.financingPaid,
+        interestEarned: account.interestEarned,
       },
       closed: null,
     };
@@ -172,6 +196,7 @@ export function applyFill(
       realizedPnl: roundCash(account.realizedPnl + netPnl),
       commissionPaid: roundCash(account.commissionPaid + fill.commission),
       financingPaid: account.financingPaid,
+      interestEarned: account.interestEarned,
     },
     closed,
   };
@@ -205,5 +230,30 @@ export function applyFinancing(
     ...account,
     cash: roundCash(account.cash - charge),
     financingPaid: roundCash(account.financingPaid + charge),
+  };
+}
+
+/**
+ * Credit interest on uninvested cash for one period.
+ *
+ * This is the counterpart to `applyFinancing`, and leaving it out was a
+ * systematic one-sided bias: the model charged for money borrowed and paid
+ * nothing for money lent. A vol-targeted or frequently-flat strategy holds most
+ * of its capital as cash, so the omission understated every such strategy by a
+ * term larger than its own returns.
+ *
+ * Only POSITIVE cash earns. Short sales credit proceeds to cash in this model,
+ * and treating that credit as an interest-bearing deposit would pay the
+ * strategy for being short — a real account does not do that, and modelling it
+ * would manufacture a return out of an accounting convention.
+ */
+export function applyCashInterest(account: AccountState, bpsPerPeriod: number): AccountState {
+  if (bpsPerPeriod <= 0 || account.cash <= 0) return account;
+
+  const interest = account.cash * (bpsPerPeriod / 10_000);
+  return {
+    ...account,
+    cash: roundCash(account.cash + interest),
+    interestEarned: roundCash(account.interestEarned + interest),
   };
 }
