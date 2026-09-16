@@ -15,7 +15,7 @@ npm run research      # hypothesis 2 (time-series momentum)
 npm run unattended    # the live loop, driven through a failure gauntlet
 npm run import-mt5    # import your broker's own history + measured spread
 npm run intraday      # what a strategy must achieve to cover this broker's spread
-npm test              # 451 tests
+npm test              # 463 tests
 ```
 
 ## The four domains
@@ -70,6 +70,14 @@ soundly closed.
   at one hour**. A probability cannot exceed 1, so nothing of any quality trades
   AUDCAD in that hour. It binds on strategies that *transact* then, not on
   positions merely held through it.
+
+Then a second screen asks whether the data could *detect* an edge where cost
+permits one, and the two disagree. Narrowing to gold's cheapest hours leaves
+911 independent 15-minute observations — enough to resolve only a +4.1 point
+edge. **Exactly one adequately powered test exists here: gold, 15-minute
+horizon, all hours, clearing about 53.2%.** Every other window is a study that
+cannot succeed, and knowing which is which cost one afternoon rather than one
+backtest.
 
 ## Two studies, two falsifications
 

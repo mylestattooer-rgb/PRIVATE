@@ -15,4 +15,6 @@ export type { PortfolioCosts, PortfolioResult, RunOptions } from "./portfolio";
 export { aggregateToDaily, isIntraday, parseMt5Export, spreadPointsToBps } from "./mt5-import";
 export type { AggregateOptions, Mt5Bar, Mt5ImportOptions, Mt5ImportResult, SpreadSummary } from "./mt5-import";
 export { breakEvenHitRate, classify, hourlyProfile } from "./intraday";
+export { detectableEdge, independentSamples, requiredSamples } from "./power";
+export type { PowerSpec } from "./power";
 export type { Feasibility, Horizon, HorizonStat, HourProfile } from "./intraday";

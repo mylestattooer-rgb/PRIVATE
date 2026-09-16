@@ -153,13 +153,59 @@ Each of these could overturn something above.
 5. **Windows straddling session gaps are discarded**, so the weekend jump is not
    being counted as a tradeable move.
 
-## 7. What it licenses
+## 7. The second screen: is there enough data to look?
+
+Cost says where an edge could survive. It does not say whether this data could
+*see* one. That question belongs before a hypothesis too, because a test
+without enough observations does not return "no edge" — it returns a number
+with no information in it, which then gets argued about. Worse, an
+underpowered test that happens to land above its threshold is the single most
+likely route by which a false positive gets promoted to live trading.
+
+Observations here are **non-overlapping**: a 15-minute horizon yields four per
+hour, not sixty. Counting every bar would claim fifteen times the information
+actually present, which is exactly the arithmetic that makes an underpowered
+study look adequate.
+
+XAUUSD, one-sided, α = 0.05, power = 0.80:
+
+| Window | Horizon | Independent n | Break-even | Smallest detectable edge | |
+|---|---|---|---|---|---|
+| Cheapest hours (12–14 UTC) | 15 min | 911 | 50.69% | **+4.11%** | underpowered 4.2× |
+| Cheapest hours (12–14 UTC) | 60 min | 227 | 50.36% | +8.21% | underpowered 17× |
+| **All hours pooled** | **15 min** | **6,658** | **51.65%** | **+1.52%** | **adequate** |
+| All hours pooled | 60 min | 1,591 | 50.80% | +3.11% | underpowered 2.4× |
+
+**The two screens disagree, and that is the result.** Cost points at 12:00–15:00
+UTC, where gold is cheapest to trade. Restricting to those three hours leaves
+911 observations, enough to detect only a +4.11 point edge — a 54.8% hit rate,
+better than essentially any published intraday result net of costs. Looking
+where it is cheapest destroys the ability to see anything.
+
+Pooling every hour restores the sample to 6,658 and brings the detectable edge
+down to +1.52 points, but raises break-even to 51.65% by mixing the expensive
+hours back in.
+
+**Exactly one adequately powered test exists in this data: gold, 15-minute
+horizon, all hours, and a signal must reach about 53.2% to be distinguishable
+from noise.** That is a demanding bar — neither hypothesis tested here came
+close — but it is not an absurd one for an intraday signal, and it is a bar
+fixed by arithmetic rather than chosen after the fact.
+
+Everything else on the table is a study that cannot succeed and should not be
+run.
+
+## 8. What it licenses
 
 Only this, and it is narrow:
 
-- **Gold, at horizons of 15 minutes or longer, during 12:00–15:00 UTC, is not
-  excluded on cost.** Required hit rate 50.6%–51.0%. A hypothesis aimed there
-  is worth pre-registering.
+- **One hypothesis is worth pre-registering: gold, 15-minute horizon, all
+  hours.** It is the only window where cost permits an edge to survive *and*
+  the data can detect one. The bar it must clear is **~53.2%**, which is
+  break-even plus the smallest detectable edge, and both halves of that number
+  were fixed before any return was measured.
+- **Do not narrow to the cheap hours.** It is the obvious move on the cost
+  table and it takes the sample below what can resolve any plausible edge.
 - **AUDCAD intraday is not worth a hypothesis** at this broker. Nine affordable
   cells out of ninety-six, every one of them needing a hit rate above anything
   either tested hypothesis reached, with the cheapest-looking hours resting on
@@ -168,6 +214,12 @@ Only this, and it is narrow:
   AUDCAD and treat 22:00–23:00 UTC as expensive for gold.
 
 None of this is evidence that an edge exists. It narrows where one could
-survive if it did. The next step is a pre-registered hypothesis with a stated
+survive if it did, and then narrows again to where its absence would mean
+something. The next step is a pre-registered hypothesis with a stated
 mechanism, criteria fixed before the run, and the out-of-sample window — still
 untouched after two studies — left alone until something earns it.
+
+**A note on what this screen cost.** Two of the three things it established are
+negative: a whole hour of AUDCAD that nothing can trade, and three windows out
+of four that cannot be tested. Those were cheaper to find here than in a study,
+and much cheaper than in a live account.

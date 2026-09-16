@@ -17,8 +17,11 @@ import { readFileSync } from "node:fs";
 import {
   breakEvenHitRate,
   classify,
+  detectableEdge,
   hourlyProfile,
+  independentSamples,
   parseMt5Export,
+  requiredSamples,
   type Feasibility,
   type HourProfile,
 } from "../app/lib/domains/research";
@@ -94,6 +97,71 @@ function report(label: string, profile: HourProfile[]): void {
   }
 }
 
+/**
+ * The companion question to the screen, and the one that decides whether a
+ * hypothesis is worth writing: given the observations available in a window,
+ * how large an edge could this data actually detect?
+ *
+ * Run second and reported second, but it can veto what the screen permits. A
+ * window with affordable costs and too few observations cannot produce a
+ * result — only a number.
+ */
+function power(profile: HourProfile[], windows: { label: string; hours: number[] }[]): void {
+  console.log(`\n${"=".repeat(78)}`);
+  console.log("Could this data detect an edge, where cost permits one to survive?");
+  console.log("=".repeat(78));
+  console.log(
+    `\n${"window".padEnd(32)}${"horizon".padStart(8)}${"indep n".padStart(10)}` +
+      `${"break-even".padStart(12)}${"detectable".padStart(12)}${"n for +2pt".padStart(12)}`,
+  );
+  console.log("-".repeat(78));
+
+  for (const { label, hours } of windows) {
+    for (const horizon of [15, 60]) {
+      const rows = profile.filter((p) => hours.includes(p.hour));
+      // Hours with no window of this length — the session edge — contribute no
+      // observations and must not contribute a break-even rate either. Pooling
+      // an Infinity through a weighted mean poisons the whole row.
+      const usable = rows.filter((r) => {
+        const stat = r.horizons.find((h) => h.horizon === horizon);
+        return stat !== undefined && stat.samples > 0 && stat.meanAbsMoveBps > 0;
+      });
+      const barsIn = usable.reduce((sum, r) => sum + r.bars, 0);
+      if (barsIn === 0) continue;
+
+      const samples = independentSamples(barsIn, horizon);
+      const breakEven =
+        usable.reduce((sum, r) => {
+          const stat = r.horizons.find((h) => h.horizon === horizon)!;
+          return sum + breakEvenHitRate(r.medianSpreadBps, stat.meanAbsMoveBps) * r.bars;
+        }, 0) / barsIn;
+
+      const edge = detectableEdge(samples, breakEven);
+      const needed = requiredSamples({ baseline: breakEven, target: breakEven + 0.02 });
+      const verdict = samples >= needed ? "" : `   <- underpowered ${(needed / samples).toFixed(1)}x`;
+
+      console.log(
+        label.padEnd(32) +
+          `${horizon}m`.padStart(8) +
+          samples.toLocaleString().padStart(10) +
+          `${(breakEven * 100).toFixed(2)}%`.padStart(12) +
+          `+${(edge * 100).toFixed(2)}%`.padStart(12) +
+          (Number.isFinite(needed) ? needed.toLocaleString() : "—").padStart(12) +
+          verdict,
+      );
+    }
+  }
+
+  console.log(
+    `\n  "detectable" is the smallest edge over break-even this many observations` +
+      `\n  could distinguish from noise, one-sided at alpha .05 with 80% power.` +
+      `\n  "n for +2pt" is what it would take to find a signal hitting two points` +
+      `\n  above break-even — already better than either hypothesis tested here.` +
+      `\n\n  Observations are NON-OVERLAPPING. A 15-minute horizon gets four per hour,` +
+      `\n  not sixty; counting every bar would claim fifteen times the information.`,
+  );
+}
+
 function main(): void {
   const file = arg("file");
   const point = Number(arg("point"));
@@ -128,7 +196,22 @@ function main(): void {
       `the spread exceeds the typical move and no signal of any quality can pay for it.`,
   );
 
-  report(label, hourlyProfile(result.bars, point, HORIZONS));
+  const profile = hourlyProfile(result.bars, point, HORIZONS);
+  report(label, profile);
+
+  // The cheapest contiguous three hours, and everything, so the trade-off
+  // between affordable cost and adequate sample is visible in one place.
+  const cheapest = [...profile]
+    .filter((p) => p.medianSpreadBps > 0)
+    .sort((a, b) => a.medianSpreadBps - b.medianSpreadBps)
+    .slice(0, 3)
+    .map((p) => p.hour)
+    .sort((a, b) => a - b);
+
+  power(profile, [
+    { label: `cheapest hours (${cheapest.join(", ")} UTC)`, hours: cheapest },
+    { label: "all hours pooled", hours: profile.map((p) => p.hour) },
+  ]);
 }
 
 main();
