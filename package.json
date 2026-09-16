@@ -15,7 +15,8 @@
     "unattended": "tsx scripts/unattended.ts",
     "db:seed": "tsx prisma/seed.ts",
     "db:migrate": "prisma migrate dev",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "intraday": "tsx scripts/intraday.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

@@ -14,7 +14,8 @@ npm run evidence      # hypothesis 1 (moving-average crossover)
 npm run research      # hypothesis 2 (time-series momentum)
 npm run unattended    # the live loop, driven through a failure gauntlet
 npm run import-mt5    # import your broker's own history + measured spread
-npm test              # 436 tests
+npm run intraday      # what a strategy must achieve to cover this broker's spread
+npm test              # 451 tests
 ```
 
 ## The four domains
@@ -51,6 +52,24 @@ These are enforced by types and tests, not by discipline.
 7. **Live mode is off.** `runBacktest` throws on any adapter declaring
    `isLive`; `runCycle` refuses a live gateway unless explicitly opted in, and
    nothing sets that opt-in. No venue adapter exists.
+
+## A screen, before the third hypothesis
+
+`INTRADAY_FEASIBILITY.md` asks what hit rate a strategy would need merely to
+cover this broker's measured spread, hour by hour. It measures no returns and
+proposes no strategy; it exists to close off search space before a hypothesis
+is written, and it is deliberately optimistic so that the cells it *closes* are
+soundly closed.
+
+- **Gold is not excluded anywhere.** At horizons of 15 minutes or more it needs
+  50.6%–53.6% depending on the hour. At one minute, 52.5% at best.
+- **AUDCAD mostly is.** Nine of ninety-six cells are affordable.
+- **One hard exclusion.** At 21:00 UTC — 00:00 on this GMT+3 server, the daily
+  rollover — AUDCAD's spread is **38× its normal level**, sustained across every
+  ten-minute block of the hour. Break-even needs **491% at one minute and 122%
+  at one hour**. A probability cannot exceed 1, so nothing of any quality trades
+  AUDCAD in that hour. It binds on strategies that *transact* then, not on
+  positions merely held through it.
 
 ## Two studies, two falsifications
 
@@ -110,8 +129,14 @@ Stated plainly, because it determines what is worth doing next.
 - **No bonds, energy or agriculturals.** The data plan denies them. These are
   where trend following has historically worked best, so hypothesis 2 could not
   be tested on the universe its evidence rests on.
-- **No intraday.** Every tier is denied. Session effects and microstructure —
-  where an edge is most plausible for a small operator — are unreachable.
+- **~~No intraday.~~ Wrong, and corrected.** Every FMP tier is denied, and I
+  wrote that down as if it settled the question. It did not: the operator's own
+  MT5 exports are **99,879 minute bars each**, with the broker's per-bar spread
+  attached. I had mistaken a limitation of one source for a limitation of the
+  problem, which quietly removed the most promising direction from
+  consideration. What the exports genuinely lack is *length* — about three
+  months each, one regime. That is too short to test a signal and ample to
+  measure a cost. See `INTRADAY_FEASIBILITY.md`.
 - **Spot prices, not total returns.** Carry and roll are excluded. For FX that
   is most of the historical return, so I tested price momentum with the paid
   component stripped out.
@@ -156,11 +181,12 @@ What remains is seven USD-driven FX pairs, three futures and two crypto, with a
 measured effective breadth of 5.36. **The supported claim is that this data
 cannot test the hypothesis, not that the hypothesis is false.**
 
-### 2. Intraday data
+### 2. Longer intraday history
 
-Every tier is denied on the current plan. Session effects and microstructure are
-where an edge is most plausible for a small operator, and daily bars cannot
-reach them at all.
+Not intraday data as such — that arrived with the MT5 exports. **Length.** Three
+months is one regime, so the feasibility screen below can say what trading cost
+over this window and not whether that holds. A year or more of M1, or repeated
+exports over time, would turn a snapshot into something with a trend in it.
 
 ### 3. A better hypothesis, not a better fit
 
@@ -188,6 +214,10 @@ before it.
   is resolved as the stop.
 - **Effective breadth was 5.4**, not 12. Seven USD-driven FX pairs are not seven
   bets.
+- **21% of gold and 28% of AUDCAD minute bars report no spread**, and the
+  missing ones are the more volatile ones. Every measured cost in this repo is
+  therefore taken over the calmer half of the data and is, if anything,
+  understated.
 
 ## Going live
 
