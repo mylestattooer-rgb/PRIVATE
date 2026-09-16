@@ -10,6 +10,7 @@
     "test": "vitest run",
     "backtest": "tsx scripts/backtest.ts",
     "evidence": "tsx scripts/evidence.ts",
+    "research": "tsx scripts/research.ts",
     "unattended": "tsx scripts/unattended.ts",
     "db:seed": "tsx prisma/seed.ts",
     "db:migrate": "prisma migrate dev",
