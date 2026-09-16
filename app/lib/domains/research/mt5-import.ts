@@ -40,7 +40,25 @@ export type Mt5ImportResult = {
 };
 
 export type SpreadSummary = {
+  /** Usable (strictly positive) samples the quantiles below are computed over. */
   samples: number;
+  /**
+   * Bars whose `<SPREAD>` cell read exactly 0, excluded from every figure here.
+   *
+   * Not a tight market — missing data. On the operator's own XAUUSD export
+   * 21% of bars read zero, and they arrive in runs (median 7 consecutive
+   * minutes, longest 1,236 — over twenty hours) with a *wider* high-low range
+   * than the bars around them, which is the opposite of what a genuinely
+   * frictionless minute looks like. A bar carrying hundreds of ticks cannot
+   * have had no bid-ask spread.
+   *
+   * Counting them as zeros dragged that export's median from 13 points to 10 —
+   * understating the operator's real cost by 30%. Excluding them can in
+   * principle overstate cost, if a raw-spread account ever genuinely touches
+   * zero. That is the safe direction for a backtest to err in, and this field
+   * makes the choice auditable rather than invisible.
+   */
+  zeroSamples: number;
   medianPoints: number;
   meanPoints: number;
   p95Points: number;
@@ -78,10 +96,14 @@ function parseMt5Date(date: string, time: string | null, offsetHours: number): s
 
 function summariseSpread(values: number[]): SpreadSummary | null {
   if (values.length === 0) return null;
-  const sorted = [...values].sort((a, b) => a - b);
+  const zeroSamples = values.filter((v) => v === 0).length;
+  const usable = values.filter((v) => v > 0);
+  if (usable.length === 0) return null;
+  const sorted = usable.sort((a, b) => a - b);
   const at = (q: number) => sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))];
   return {
     samples: sorted.length,
+    zeroSamples,
     // Median rather than mean is the headline: spread distributions have a long
     // right tail from news and rollover, and the mean reports a cost the
     // operator rarely actually pays.
@@ -155,11 +177,16 @@ export function parseMt5Export(text: string, options: Mt5ImportOptions = {}): Mt
     }
 
     // Number("") is 0, which would record a blank cell as a measured
-    // zero-point spread — the most flattering possible fabrication.
+    // zero-point spread — the most flattering possible fabrication. A cell
+    // that literally reads 0 is the same fabrication one level down: see
+    // SpreadSummary.zeroSamples for why those are missing data rather than
+    // free trading. Both become null on the bar, which means "not measured";
+    // the count of the second kind is kept so the gap stays visible.
     const spreadCell = cols.spread === -1 ? "" : (cells[cols.spread] ?? "").trim();
     const spreadRaw = spreadCell === "" ? null : Number(spreadCell);
-    const spreadPoints = spreadRaw !== null && Number.isFinite(spreadRaw) && spreadRaw >= 0 ? spreadRaw : null;
-    if (spreadPoints !== null) spreads.push(spreadPoints);
+    const reported = spreadRaw !== null && Number.isFinite(spreadRaw) && spreadRaw >= 0 ? spreadRaw : null;
+    if (reported !== null) spreads.push(reported);
+    const spreadPoints = reported !== null && reported > 0 ? reported : null;
 
     bars.push({
       time,
@@ -186,6 +213,16 @@ export function parseMt5Export(text: string, options: Mt5ImportOptions = {}): Mt
  * specification as everything else, and guessing it is the fastest way to be
  * wrong by a factor of ten.
  */
+export type AggregateOptions = {
+  /**
+   * Hours to add back before choosing each bar's calendar day, so bucketing
+   * happens on the broker's trading day. Pass whatever was given to
+   * `parseMt5Export` as `serverOffsetHours`; leaving it at 0 when the parse
+   * shifted the clock is what manufactures the Sunday stubs described below.
+   */
+  tradingDayOffsetHours?: number;
+};
+
 export function spreadPointsToBps(spreadPoints: number, pointSize: number, price: number): number {
   if (price <= 0 || pointSize <= 0) return 0;
   return ((spreadPoints * pointSize) / price) * 10_000;
@@ -201,17 +238,31 @@ export function spreadPointsToBps(spreadPoints: number, pointSize: number, price
  * then reads as a hundred thousand daily returns of roughly zero. The first
  * real file imported did exactly that.
  *
- * Aggregation is by UTC calendar day: the day's open is its first bar's open,
- * the close its last bar's close, the high and low the extremes across all of
- * them, and volume the sum. Spread is carried as the day's MEDIAN, since a
- * daily bar has no single spread and the mean is dominated by news spikes.
+ * The day's open is its first bar's open, the close its last bar's close, the
+ * high and low the extremes across all of them, and volume the sum. Spread is
+ * carried as the day's MEDIAN, since a daily bar has no single spread and the
+ * mean is dominated by news spikes.
+ *
+ * **Bucket on the broker's trading day, not the UTC one.** `parseMt5Export`
+ * shifts timestamps to UTC, which is right for lining intraday bars up against
+ * another venue's clock and wrong here: a daily bar is a trading day. On a
+ * GMT+3 server the week opens Monday 01:00 local, which is Sunday 22:00 UTC,
+ * so UTC bucketing splits every Monday and emits a Sunday stub. Measured on
+ * the operator's own gold export: 92 "days" instead of 77, the 15 extras all
+ * Sundays carrying about 7% of a normal day's volume — full trading days as
+ * far as anything downstream could tell. Pass the same offset given to
+ * `parseMt5Export` and the split does not happen.
  */
-export function aggregateToDaily(bars: Mt5Bar[]): Mt5Bar[] {
+export function aggregateToDaily(bars: Mt5Bar[], options: AggregateOptions = {}): Mt5Bar[] {
   if (bars.length === 0) return [];
+  const offsetMs = (options.tradingDayOffsetHours ?? 0) * 3_600_000;
 
   const byDay = new Map<string, Mt5Bar[]>();
   for (const bar of bars) {
-    const day = bar.time.slice(0, 10);
+    const day =
+      offsetMs === 0
+        ? bar.time.slice(0, 10)
+        : new Date(Date.parse(bar.time) + offsetMs).toISOString().slice(0, 10);
     const bucket = byDay.get(day);
     if (bucket) bucket.push(bar);
     else byDay.set(day, [bar]);

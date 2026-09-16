@@ -61,7 +61,11 @@ let CASH_RATE_ANNUAL_PCT = 0;
  */
 const INSTRUMENTS: Record<string, { halfSpreadBps: number; commissionBps: number; annualFinancingPct: number; barsPerYear: number; spreadMeasured: boolean }> = {
   EURUSD: { halfSpreadBps: 0.75, commissionBps: 0.5, annualFinancingPct: 3, barsPerYear: 252, spreadMeasured: false },
-  GCUSD: { halfSpreadBps: 0.115, commissionBps: 0.5, annualFinancingPct: 3, barsPerYear: 252, spreadMeasured: true },
+  // 0.1526 = half of a 13-point median spread at a 4259.29 median price. The
+  // 13 excludes the 21% of bars reporting exactly 0, which is missing data
+  // rather than free trading — including them gave 10 points and understated
+  // the cost by 30%. See SpreadSummary.zeroSamples.
+  GCUSD: { halfSpreadBps: 0.1526, commissionBps: 0.5, annualFinancingPct: 3, barsPerYear: 252, spreadMeasured: true },
   BTCUSD: { halfSpreadBps: 5, commissionBps: 1, annualFinancingPct: 10, barsPerYear: 365, spreadMeasured: false },
 };
 

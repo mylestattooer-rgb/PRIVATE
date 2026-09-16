@@ -70,16 +70,36 @@ function main(): void {
     const s = result.spread;
     console.log(`\n  MEASURED SPREAD (points, from the broker's own export)`);
     console.log(`    median ${s.medianPoints}   mean ${s.meanPoints.toFixed(1)}   p95 ${s.p95Points}   max ${s.maxPoints}`);
-    if (pointSize !== null && Number.isFinite(pointSize)) {
-      const lastPrice = result.bars[result.bars.length - 1].close;
+    console.log(`    over ${s.samples.toLocaleString()} bars that reported one`);
+    if (s.zeroSamples > 0) {
+      const share = (100 * s.zeroSamples) / (s.samples + s.zeroSamples);
       console.log(
-        `    at a point size of ${pointSize} and a price of ${lastPrice}:\n` +
-          `      median ${spreadPointsToBps(s.medianPoints, pointSize, lastPrice).toFixed(3)} bps   ` +
-          `p95 ${spreadPointsToBps(s.p95Points, pointSize, lastPrice).toFixed(3)} bps`,
+        `\n    ${s.zeroSamples.toLocaleString()} further bars (${share.toFixed(1)}%) reported a spread of` +
+          ` exactly 0\n    and are EXCLUDED from every figure above. That is missing data, not a` +
+          `\n    frictionless market — counting it would understate what you actually pay.`,
       );
-      console.log(`\n    Use the MEDIAN as the half-spread in the cost models, not the mean —`);
-      console.log(`    spread distributions have a long tail and the mean reports a cost`);
-      console.log(`    you rarely actually pay.`);
+      if (share > 40) {
+        console.log(
+          `\n    WARNING: more than 40% of bars are missing a spread. Treat the median` +
+            `\n    as indicative only; it describes the bars that happened to report.`,
+        );
+      }
+    }
+    if (pointSize !== null && Number.isFinite(pointSize)) {
+      const closes = result.bars.map((b) => b.close).sort((a, b) => a - b);
+      const medianPrice = closes[Math.floor(closes.length / 2)];
+      const bps = (points: number) => spreadPointsToBps(points, pointSize, medianPrice);
+      console.log(
+        `\n    at a point size of ${pointSize} and a median price of ${medianPrice}:\n` +
+          `      median ${bps(s.medianPoints).toFixed(3)} bps   p95 ${bps(s.p95Points).toFixed(3)} bps`,
+      );
+      console.log(
+        `\n    MT5's <SPREAD> is the FULL bid-ask spread, and you cross it once over a\n` +
+          `    round trip. The cost models take a per-side figure, so halve it:\n` +
+          `      halfSpreadBps = ${(bps(s.medianPoints) / 2).toFixed(4)}`,
+      );
+      console.log(`\n    Use the MEDIAN, not the mean — spread distributions have a long tail`);
+      console.log(`    and the mean reports a cost you rarely actually pay.`);
     } else {
       console.log(`    pass --point <size> (0.00001 for 5-digit FX, 0.01 for gold) to convert to bps`);
     }
@@ -93,9 +113,34 @@ function main(): void {
   // minute sharing one date per day, which reads downstream as a hundred
   // thousand daily returns of about zero.
   const intraday = isIntraday(result.bars);
-  const daily = intraday ? aggregateToDaily(result.bars) : result.bars;
+  // Bucket on the broker's trading day. parseMt5Export has already shifted the
+  // clock to UTC, which would split every Monday on a GMT+N server and emit a
+  // Sunday stub with a few percent of a day's volume.
+  const daily = intraday
+    ? aggregateToDaily(result.bars, { tradingDayOffsetHours: serverOffsetHours })
+    : result.bars;
   if (intraday) {
-    console.log(`\n  Input is intraday — aggregated ${result.bars.length} bars into ${daily.length} daily bars.`);
+    console.log(`\n  Input is intraday — aggregated ${result.bars.length} bars into ${daily.length} daily bars`);
+    console.log(`  on the broker's trading day (server offset ${serverOffsetHours}h).`);
+  }
+
+  // A partial day looks exactly like a full one to everything downstream, so
+  // say so here rather than let it be counted as a trading day.
+  if (daily.length >= 8) {
+    const volumes = daily.map((b) => b.volume).sort((a, b) => a - b);
+    const medianVolume = volumes[Math.floor(volumes.length / 2)];
+    const short = daily.filter((b) => medianVolume > 0 && b.volume < medianVolume * 0.2);
+    if (short.length > 0) {
+      console.log(
+        `\n  WARNING: ${short.length} of ${daily.length} days carry under 20% of the median day's` +
+          `\n  volume — likely session fragments rather than trading days. First few:` +
+          `\n    ${short
+            .slice(0, 5)
+            .map((b) => `${b.time.slice(0, 10)} (${b.volume.toLocaleString()})`)
+            .join(", ")}` +
+          `\n  If these are weekend dates, --server-offset is probably wrong.`,
+      );
+    }
   }
 
   const out = `data/${symbol}_1d.csv`;

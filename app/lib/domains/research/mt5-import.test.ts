@@ -115,6 +115,41 @@ describe("spread measurement", () => {
     expect(spread!.medianPoints).toBe(18);
   });
 
+  it("treats a spread of exactly 0 as missing rather than free trading", () => {
+    // 21% of the operator's real gold export reads zero, in runs of up to
+    // 1,236 consecutive minutes and on bars with a WIDER range than their
+    // neighbours. Counting those as zeros pulled the median from 13 to 10 and
+    // understated the cost by 30%.
+    const zeros = [
+      ["<DATE>", "<OPEN>", "<HIGH>", "<LOW>", "<CLOSE>", "<SPREAD>"].join(TAB),
+      ["2024.01.02", "1.10", "1.20", "1.00", "1.15", "0"].join(TAB),
+      ["2024.01.03", "1.15", "1.25", "1.05", "1.20", "0"].join(TAB),
+      ["2024.01.04", "1.20", "1.30", "1.10", "1.25", "12"].join(TAB),
+      ["2024.01.05", "1.25", "1.35", "1.15", "1.30", "20"].join(TAB),
+    ].join("\n");
+    const { bars, spread } = parseMt5Export(zeros);
+
+    // Null on the bar too: "not measured" is what it is.
+    expect(bars[0].spreadPoints).toBeNull();
+    expect(bars[2].spreadPoints).toBe(12);
+
+    expect(spread!.zeroSamples).toBe(2);
+    expect(spread!.samples).toBe(2); // only the two that reported
+    expect(spread!.medianPoints).toBe(20); // not 6, which including zeros gives
+    expect(spread!.maxPoints).toBe(20);
+  });
+
+  it("reports no summary when every bar's spread is zero", () => {
+    // Nothing was measured, so there is no median to report. Returning 0 here
+    // would hand the cost models a free-trading instrument.
+    const allZero = [
+      ["<DATE>", "<OPEN>", "<HIGH>", "<LOW>", "<CLOSE>", "<SPREAD>"].join(TAB),
+      ["2024.01.02", "1.10", "1.20", "1.00", "1.15", "0"].join(TAB),
+      ["2024.01.03", "1.15", "1.25", "1.05", "1.20", "0"].join(TAB),
+    ].join("\n");
+    expect(parseMt5Export(allZero).spread).toBeNull();
+  });
+
   it("reports no spread summary when the export has no spread column", () => {
     const noSpread = ["<DATE>\t<OPEN>\t<HIGH>\t<LOW>\t<CLOSE>", "2024.01.02\t1\t2\t1\t1.5"].join("\n");
     expect(parseMt5Export(noSpread).spread).toBeNull();
@@ -189,6 +224,33 @@ describe("aggregateToDaily", () => {
     const days = aggregateToDaily(parseMt5Export(minutes).bars);
     const dates = days.map((d) => d.time.slice(0, 10));
     expect(new Set(dates).size).toBe(dates.length);
+  });
+
+  it("buckets on the broker's trading day, not the UTC one", () => {
+    // A GMT+3 server opens the week at 01:00 local = 22:00 UTC the day before.
+    // Bucketing the shifted timestamps by UTC date splits that Monday off into
+    // a Sunday of its own. On the operator's gold export this turned 77 days
+    // into 92, the 15 extras all Sundays carrying ~7% of a normal day's volume.
+    const week = [
+      ["<DATE>", "<TIME>", "<OPEN>", "<HIGH>", "<LOW>", "<CLOSE>", "<TICKVOL>"].join(TAB),
+      ["2024.01.08", "01:00:00", "1.10", "1.12", "1.09", "1.11", "50"].join(TAB),
+      ["2024.01.08", "02:00:00", "1.11", "1.13", "1.10", "1.12", "60"].join(TAB),
+      ["2024.01.08", "23:00:00", "1.12", "1.14", "1.11", "1.13", "70"].join(TAB),
+    ].join("\n");
+    const bars = parseMt5Export(week, { serverOffsetHours: 3 }).bars;
+
+    // Parsed to UTC, the 01:00 and 02:00 server bars land on the 7th.
+    expect(bars[0].time.slice(0, 10)).toBe("2024-01-07");
+
+    const utcBuckets = aggregateToDaily(bars);
+    expect(utcBuckets).toHaveLength(2); // the split
+
+    const tradingDay = aggregateToDaily(bars, { tradingDayOffsetHours: 3 });
+    expect(tradingDay).toHaveLength(1);
+    expect(tradingDay[0].time.slice(0, 10)).toBe("2024-01-08");
+    expect(tradingDay[0].open).toBe(1.1); // the session's first open
+    expect(tradingDay[0].close).toBe(1.13); // its last close
+    expect(tradingDay[0].volume).toBe(180); // nothing lost to the split
   });
 
   it("handles an empty series", () => {
