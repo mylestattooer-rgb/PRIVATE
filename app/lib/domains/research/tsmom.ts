@@ -78,3 +78,41 @@ export function volScaledWeight(
 export function warmupBars(config: TsmomConfig): number {
   return Math.max(config.lookback, config.volWindow + 1);
 }
+
+/**
+ * The specification in the units it is actually reasoned about — months — with
+ * bar counts derived from the calendar the data really has.
+ *
+ * EVIDENCE_PROTOCOL_2.md §4 states a "252 trading day" lookback described as
+ * "the canonical 12-month horizon". On a union calendar of 336 bars a year
+ * those are not the same thing, and the first run of the study used the bar
+ * count rather than the horizon. The horizon is the intent, so it is what this
+ * expresses.
+ */
+export type TsmomSpec = {
+  lookbackMonths: number;
+  volWindowMonths: number;
+  rebalanceMonths: number;
+  volTargetAnnual: number;
+  maxWeightPerInstrument: number;
+};
+
+export const CANONICAL_TSMOM_SPEC: TsmomSpec = {
+  lookbackMonths: 12,
+  volWindowMonths: 3,
+  rebalanceMonths: 1,
+  volTargetAnnual: 0.1,
+  maxWeightPerInstrument: 2,
+};
+
+export function calibrate(spec: TsmomSpec, barsPerYear: number): TsmomConfig {
+  const perMonth = barsPerYear / 12;
+  return {
+    lookback: Math.max(2, Math.round(spec.lookbackMonths * perMonth)),
+    volWindow: Math.max(2, Math.round(spec.volWindowMonths * perMonth)),
+    rebalanceEvery: Math.max(1, Math.round(spec.rebalanceMonths * perMonth)),
+    volTargetAnnual: spec.volTargetAnnual,
+    maxWeightPerInstrument: spec.maxWeightPerInstrument,
+    periodsPerYear: barsPerYear,
+  };
+}

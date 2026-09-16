@@ -46,6 +46,17 @@ describe("renderDashboard", () => {
     expect(out).toContain("4 @ 99");
   });
 
+  it("renders a zero quantity as flat rather than long", () => {
+    const out = renderDashboard(model({ positions: [{ symbol: "TEST", quantity: 0, averagePrice: 99 }] }));
+    expect(out).toContain("flat");
+    expect(out).not.toContain("long");
+  });
+
+  it("returns nothing for a zero-length decision request", () => {
+    // slice(-0) is slice(0) and would return the whole log.
+    expect(renderDashboard(model())).toContain("none recorded");
+  });
+
   it("computes drawdown against the remembered peak, not current equity", () => {
     const out = renderDashboard(
       model({ accountEquity: 8_000, equity: { day: "2026-09-16", dayStartEquity: 9_000, peakEquity: 10_000 } }),

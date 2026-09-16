@@ -41,7 +41,12 @@ export type PortfolioResult = {
   /** Portfolio returns net of all costs. */
   returns: number[];
   returnsGross: number[];
-  /** Cumulative contribution of each instrument, net of its share of costs. */
+  /** Cumulative contribution of each instrument, GROSS of costs. Costs are
+   *  charged at the portfolio level (financing on total gross exposure,
+   *  transaction cost on total turnover) and are not attributable to one
+   *  instrument without an arbitrary allocation rule, so they are not
+   *  attributed at all. Any criterion counting "positive instruments" is
+   *  therefore counting them before costs, and must say so. */
   contributionBySymbol: Record<string, number>;
   /** Each instrument's contribution stream, for correlation and breadth. */
   contributionSeries: Record<string, number[]>;

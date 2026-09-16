@@ -112,6 +112,17 @@ describe("reconcile", () => {
     expect(report.halt).not.toBeNull();
   });
 
+  it("treats a zero-quantity broker row as flat, not as an unknown position", async () => {
+    // Brokers report a flat symbol either by omitting it or by returning zero.
+    const report = await reconcile({
+      gateway: createFakeGateway({ positions: [{ symbol: "EURUSD", quantity: 0, averagePrice: 1.16 }] }),
+      store: createInMemoryOrderStore(),
+      now,
+    });
+    expect(report.discrepancies).toEqual([]);
+    expect(report.halt).toBeNull();
+  });
+
   it("halts on a quantity mismatch and reports both numbers", async () => {
     const report = await reconcile({
       gateway: createFakeGateway({ positions: [{ symbol: "EURUSD", quantity: 3, averagePrice: 1.16 }] }),

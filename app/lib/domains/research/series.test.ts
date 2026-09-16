@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { alignSeries, realisedVol, simpleReturns, trailingReturn } from "./series";
+import { alignSeries, barsPerYear, realisedVol, simpleReturns, trailingReturn } from "./series";
 
 describe("alignSeries", () => {
   const input = {
@@ -95,5 +95,33 @@ describe("trailingReturn", () => {
 
   it("returns null when there is not enough history", () => {
     expect(trailingReturn(prices, 252, 100)).toBeNull();
+  });
+});
+
+describe("barsPerYear", () => {
+  const daily = (count: number, stepDays: number) =>
+    Array.from({ length: count }, (_, i) =>
+      new Date(Date.UTC(2020, 0, 1) + i * stepDays * 86_400_000).toISOString().slice(0, 10),
+    );
+
+  it("measures a 7-day calendar at about 365", () => {
+    expect(barsPerYear(daily(700, 1))).toBeCloseTo(365.25, 0);
+  });
+
+  it("measures a 5-day calendar well below 365", () => {
+    // Weekdays only: roughly 260 a year.
+    const weekdays: string[] = [];
+    for (let i = 0; weekdays.length < 500; i++) {
+      const d = new Date(Date.UTC(2020, 0, 1) + i * 86_400_000);
+      if (d.getUTCDay() !== 0 && d.getUTCDay() !== 6) weekdays.push(d.toISOString().slice(0, 10));
+    }
+    const measured = barsPerYear(weekdays);
+    expect(measured).toBeGreaterThan(250);
+    expect(measured).toBeLessThan(270);
+  });
+
+  it("falls back to 252 when there is nothing to measure", () => {
+    expect(barsPerYear([])).toBe(252);
+    expect(barsPerYear(["2020-01-01"])).toBe(252);
   });
 });

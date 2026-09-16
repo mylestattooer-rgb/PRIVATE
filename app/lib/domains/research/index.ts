@@ -1,4 +1,4 @@
-export { alignSeries, realisedVol, simpleReturns, trailingReturn } from "./series";
+export { alignSeries, barsPerYear, realisedVol, simpleReturns, trailingReturn } from "./series";
 export type { AlignedSeries } from "./series";
 export {
   annualisedReturn,
@@ -8,8 +8,8 @@ export {
   maxDrawdown,
   sharpe,
 } from "./stats";
-export { CANONICAL_TSMOM, momentumSignal, volScaledWeight, warmupBars } from "./tsmom";
-export type { SignalMode, TsmomConfig } from "./tsmom";
+export { calibrate, CANONICAL_TSMOM, CANONICAL_TSMOM_SPEC, momentumSignal, volScaledWeight, warmupBars } from "./tsmom";
+export type { SignalMode, TsmomConfig, TsmomSpec } from "./tsmom";
 export { FREE, runPortfolio } from "./portfolio";
 export type { PortfolioCosts, PortfolioResult, RunOptions } from "./portfolio";
 export { parseMt5Export, spreadPointsToBps } from "./mt5-import";

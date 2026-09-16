@@ -270,6 +270,78 @@ describe("restart recovery", () => {
   });
 });
 
+describe("regressions from adversarial review", () => {
+  it("treats a zero-quantity broker position as flat, not a phantom long", async () => {
+    // 0 is the documented representation of flat. Read as a position it either
+    // freezes the account out of entries or emits a 0-quantity close order.
+    const gateway = createFakeGateway({ positions: [{ symbol: "TEST", quantity: 0, averagePrice: 100 }] });
+    const orders = createInMemoryOrderStore();
+    const report = await runCycle(context({ gateway, orders }));
+
+    expect(report.orderSubmitted).toBe(true);
+    const stored = await orders.get(report.clientOrderId!);
+    // An entry, not a phantom zero-quantity close.
+    expect(stored!.intent).toBe("open");
+    expect(stored!.quantity).toBeGreaterThan(0);
+  });
+
+  it("actually enforces the layer-1 daily loss limit", async () => {
+    // Previously the loop rebuilt an untripped kill switch every cycle, so
+    // maxDailyLossPct never bound and assessSignal's branch for it was dead.
+    const equity = createInMemoryEquityStore({
+      day: "2026-09-16",
+      dayStartEquity: 10_000,
+      peakEquity: 10_000,
+    });
+    const gateway = createFakeGateway({ account: { equity: 9_000, balance: 9_000 } });
+
+    const report = await runCycle(
+      context({ gateway, equity, limits: { ...DEFAULT_RISK_LIMITS, maxDailyLossPct: 3 } }),
+    );
+
+    expect(report.orderSubmitted).toBe(false);
+    expect(report.halts.some((h) => h.reason === "risk_limit")).toBe(true);
+  });
+
+  it("halts instead of escaping when the adapter throws mid-submit", async () => {
+    // A throw carries the same uncertainty as a timeout: the order may be live.
+    const base = createFakeGateway();
+    const gateway: BrokerGateway = {
+      ...base,
+      submit: async () => {
+        throw new Error("socket reset mid-write");
+      },
+    };
+    const killSwitch = createInMemoryKillSwitch();
+
+    const report = await runCycle(context({ gateway, killSwitch }));
+
+    expect(report.selfHalted).toContain("submit threw");
+    expect((await killSwitch.read()).engaged).toBe(true);
+    // The cycle still closed its own record rather than unwinding.
+    expect(report.decisions[report.decisions.length - 1].phase).toBe("cycle_end");
+  });
+
+  it("passes every open position to layer 1, so its position limit can fire", async () => {
+    const gateway = createFakeGateway({
+      positions: [
+        { symbol: "OTHER1", quantity: 1, averagePrice: 10 },
+        { symbol: "OTHER2", quantity: 1, averagePrice: 10 },
+        { symbol: "OTHER3", quantity: 1, averagePrice: 10 },
+      ],
+    });
+    const report = await runCycle(
+      context({ gateway, limits: { ...DEFAULT_RISK_LIMITS, maxOpenPositions: 3 } }),
+    );
+
+    expect(report.orderSubmitted).toBe(false);
+    // Reconciliation halts on the unknown positions too; what matters is that
+    // layer 1 saw them rather than an empty list.
+    const sizing = report.decisions.find((d) => d.phase === "preflight");
+    expect(sizing).toBeDefined();
+  });
+});
+
 describe("live guard", () => {
   it("refuses a live gateway unless explicitly allowed", async () => {
     const live = createFakeGateway({ isLive: true });

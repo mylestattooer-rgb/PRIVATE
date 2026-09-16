@@ -59,7 +59,8 @@ export function renderDashboard(model: DashboardModel): string {
     lines.push("    flat");
   } else {
     for (const p of model.positions) {
-      const side = p.quantity >= 0 ? "long" : "short";
+      // 0 is flat, not long — see loop.ts on phantom zero-quantity positions.
+      const side = p.quantity === 0 ? "flat" : p.quantity > 0 ? "long" : "short";
       lines.push(`    ${p.symbol.padEnd(10)} ${side.padEnd(6)} ${Math.abs(p.quantity)} @ ${p.averagePrice}`);
     }
   }

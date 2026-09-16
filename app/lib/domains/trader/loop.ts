@@ -17,7 +17,13 @@
 // system can still get out, which is almost always what the operator wanted when
 // they halted it.
 
-import { assessSignal, DEFAULT_RISK_LIMITS, openTradingDay, type RiskLimits } from "../simulator/risk";
+import {
+  assessSignal,
+  DEFAULT_RISK_LIMITS,
+  evaluateKillSwitch,
+  openTradingDay,
+  type RiskLimits,
+} from "../simulator/risk";
 import { preflight, type ActiveHalt, type ProposedOrder, type Quote, type RiskPolicy } from "../riskcontrol";
 import { deriveClientOrderId } from "../execution/client-order-id";
 import { reconcile } from "../execution/reconcile";
@@ -199,7 +205,12 @@ export async function runCycle(ctx: LoopContext): Promise<CycleReport> {
   }
 
   // ---- strategy ----
-  const brokerPosition = reconciliation.brokerPositions.find((p) => p.symbol === ctx.symbol);
+  // A signed quantity of 0 is the documented representation of flat. Treating
+  // it as a position produces a phantom zero-quantity long that either freezes
+  // the account out of entries or emits a 0-quantity close order.
+  const brokerPosition = reconciliation.brokerPositions.find(
+    (p) => p.symbol === ctx.symbol && p.quantity !== 0,
+  );
   const position: Position | null = brokerPosition
     ? {
         symbol: brokerPosition.symbol,
@@ -235,13 +246,41 @@ export async function runCycle(ctx: LoopContext): Promise<CycleReport> {
   if (signal.action === "hold") return finish("strategy proposed no action");
 
   // ---- layer 1: sizing and the simulator's own risk manager ----
+  // Layer 1 sees EVERY open position, not just this symbol's, or its
+  // maxOpenPositions limit could never fire.
+  const allPositions: Position[] = reconciliation.brokerPositions
+    .filter((p) => p.quantity !== 0)
+    .map((p) => ({
+      symbol: p.symbol,
+      side: p.quantity > 0 ? ("long" as const) : ("short" as const),
+      quantity: Math.abs(p.quantity),
+      avgEntryPrice: p.averagePrice,
+      stopPrice: null,
+      targetPrice: null,
+      openedAt: at,
+      riskPerUnit: null,
+    }));
+
+  // The daily-loss halt is EVALUATED, not rebuilt untripped each cycle. Passing
+  // a fresh openTradingDay() here made maxDailyLossPct inert and left
+  // assessSignal's kill_switch_tripped branch dead in live operation.
+  const limits = ctx.limits ?? DEFAULT_RISK_LIMITS;
+  const dayState = evaluateKillSwitch(
+    openTradingDay(day, memory.dayStartEquity),
+    equityNow,
+    limits,
+  );
+  if (dayState.tripped) {
+    halts.push({ reason: "risk_limit", detail: dayState.reason ?? "daily loss limit reached" });
+  }
+
   const sized = assessSignal(signal, {
     equity: equityNow,
     cash: equityNow,
     referencePrice: decisionBar.close,
-    positions: position ? [position] : [],
-    killSwitch: openTradingDay(day, memory.dayStartEquity),
-    limits: ctx.limits ?? DEFAULT_RISK_LIMITS,
+    positions: allPositions,
+    killSwitch: dayState,
+    limits,
     orderId: "pending",
   });
 
@@ -266,7 +305,9 @@ export async function runCycle(ctx: LoopContext): Promise<CycleReport> {
   const verdict = preflight(
     proposed,
     {
-      at,
+      // Fresh, not the cycle-start timestamp: a slow cycle would otherwise
+      // understate the quote's age by however long it took to get here.
+      at: ctx.now(),
       equity: equityNow,
       dayStartEquity: memory.dayStartEquity,
       peakEquity: memory.peakEquity,
@@ -303,19 +344,33 @@ export async function runCycle(ctx: LoopContext): Promise<CycleReport> {
     side: sized.order.side,
   });
 
-  const result = await submitOrder(
-    {
-      clientOrderId,
-      symbol: ctx.symbol,
-      side: sized.order.side,
-      quantity: sized.order.quantity,
-      intent: sized.order.intent,
-      stopPrice: sized.order.stopPrice,
-      takeProfitPrice: sized.order.targetPrice,
-      reason: signal.rationale,
-    },
-    { gateway: ctx.gateway, store: ctx.orders, now: ctx.now },
-  );
+  let result: Awaited<ReturnType<typeof submitOrder>>;
+  try {
+    result = await submitOrder(
+      {
+        clientOrderId,
+        symbol: ctx.symbol,
+        side: sized.order.side,
+        quantity: sized.order.quantity,
+        intent: sized.order.intent,
+        stopPrice: sized.order.stopPrice,
+        takeProfitPrice: sized.order.targetPrice,
+        reason: signal.rationale,
+      },
+      { gateway: ctx.gateway, store: ctx.orders, now: ctx.now },
+    );
+  } catch (error) {
+    // An adapter that throws mid-submit leaves exactly the same uncertainty as
+    // a timeout: the order may be live. Escaping runCycle here would skip the
+    // halt and resume trading next cycle around a possibly-open position.
+    const detail =
+      `submit threw for ${clientOrderId}: ${error instanceof Error ? error.message : String(error)}`;
+    selfHalted = detail;
+    await engage(ctx.killSwitch, detail, "loop:submit_threw", ctx.now());
+    halts.push({ reason: "unresolved_order", detail });
+    await record("submit", false, detail, { clientOrderId }, { threw: true });
+    return finish("halted: submit threw", false, clientOrderId);
+  }
 
   await record(
     "submit",

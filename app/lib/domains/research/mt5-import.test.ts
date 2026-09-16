@@ -101,6 +101,20 @@ describe("spread measurement", () => {
     expect(spread!.meanPoints).toBeGreaterThan(spread!.medianPoints);
   });
 
+  it("does not record a blank spread cell as a measured zero", () => {
+    // Number("") is 0 — the most flattering possible fabrication.
+    const blanks = [
+      ["<DATE>", "<OPEN>", "<HIGH>", "<LOW>", "<CLOSE>", "<SPREAD>"].join(TAB),
+      ["2024.01.02", "1.10", "1.20", "1.00", "1.15", ""].join(TAB),
+      ["2024.01.03", "1.15", "1.25", "1.05", "1.20", "18"].join(TAB),
+    ].join("\n");
+    const { bars, spread } = parseMt5Export(blanks);
+
+    expect(bars[0].spreadPoints).toBeNull();
+    expect(spread!.samples).toBe(1);
+    expect(spread!.medianPoints).toBe(18);
+  });
+
   it("reports no spread summary when the export has no spread column", () => {
     const noSpread = ["<DATE>\t<OPEN>\t<HIGH>\t<LOW>\t<CLOSE>", "2024.01.02\t1\t2\t1\t1.5"].join("\n");
     expect(parseMt5Export(noSpread).spread).toBeNull();

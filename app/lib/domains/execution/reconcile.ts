@@ -165,7 +165,13 @@ export async function reconcile(ctx: ReconcileContext): Promise<ReconciliationRe
   }
 
   const localPositions = derivePositionsFromOrders(await ctx.store.all());
-  const brokerBySymbol = new Map(brokerPositions.map((p) => [p.symbol, p]));
+  // A signed quantity of 0 is flat. Brokers report flat symbols either by
+  // omitting them or by returning a zero row, and treating the zero row as a
+  // position invents a discrepancy against local records that correctly hold
+  // nothing.
+  const brokerBySymbol = new Map(
+    brokerPositions.filter((p) => Math.abs(p.quantity) > QUANTITY_EPSILON).map((p) => [p.symbol, p]),
+  );
   const localBySymbol = new Map(localPositions.map((p) => [p.symbol, p]));
 
   for (const [symbol, broker] of brokerBySymbol) {

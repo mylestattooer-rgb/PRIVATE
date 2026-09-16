@@ -65,6 +65,8 @@ export function createInMemoryDecisionLog(): DecisionLog {
       return records.filter((r) => r.cycleId === cycleId);
     },
     async recent(limit) {
+      // slice(-0) is slice(0) and returns the whole log.
+      if (limit <= 0) return [];
       return records.slice(-limit).reverse();
     },
   };

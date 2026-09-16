@@ -154,7 +154,10 @@ export function parseMt5Export(text: string, options: Mt5ImportOptions = {}): Mt
       continue;
     }
 
-    const spreadRaw = cols.spread === -1 ? null : Number(cells[cols.spread]);
+    // Number("") is 0, which would record a blank cell as a measured
+    // zero-point spread — the most flattering possible fabrication.
+    const spreadCell = cols.spread === -1 ? "" : (cells[cols.spread] ?? "").trim();
+    const spreadRaw = spreadCell === "" ? null : Number(spreadCell);
     const spreadPoints = spreadRaw !== null && Number.isFinite(spreadRaw) && spreadRaw >= 0 ? spreadRaw : null;
     if (spreadPoints !== null) spreads.push(spreadPoints);
 

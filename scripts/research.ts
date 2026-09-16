@@ -15,7 +15,9 @@ import {
   alignSeries,
   annualisedReturn,
   annualisedVol,
-  CANONICAL_TSMOM,
+  barsPerYear,
+  calibrate,
+  CANONICAL_TSMOM_SPEC,
   effectiveBreadth,
   maxDrawdown,
   runPortfolio,
@@ -26,7 +28,8 @@ import {
 } from "../app/lib/domains/research";
 
 const SPLIT = "2020-01-01";
-const PERIODS_PER_YEAR = 252;
+/** Measured from the aligned calendar, never assumed — see series.barsPerYear. */
+let PERIODS_PER_YEAR = 252;
 
 /** Protocol 2 §6 — inherited from protocol 1 and still ASSUMED, not measured.
  *  Turnover cost per unit of weight changed, and financing on gross exposure. */
@@ -85,13 +88,20 @@ async function main(): Promise<void> {
   const aligned = alignSeries(universe);
   const symbols = aligned.symbols;
 
+  // The union calendar mixes 7-day crypto with 5-day FX, so it does not run at
+  // 252 bars a year. Measuring it is what makes "12 months" mean 12 months.
+  PERIODS_PER_YEAR = barsPerYear(aligned.dates);
+  const CANONICAL_TSMOM = calibrate(CANONICAL_TSMOM_SPEC, PERIODS_PER_YEAR);
+
   const bounds = outOfSample ? { from: SPLIT } : { to: "2019-12-31" };
   const window = outOfSample ? "OUT-OF-SAMPLE" : "IN-SAMPLE";
 
   console.log(`\n${"═".repeat(78)}`);
   console.log(`  HYPOTHESIS 2: time-series momentum — ${window}`);
   console.log(`  ${symbols.length} instruments: ${symbols.join(" ")}`);
-  console.log(`  spec: ${CANONICAL_TSMOM.lookback}d lookback, ${CANONICAL_TSMOM.volWindow}d vol, ` +
+  console.log(`  calendar: ${PERIODS_PER_YEAR.toFixed(1)} bars/year (measured, not assumed)`);
+  console.log(`  spec: ${CANONICAL_TSMOM_SPEC.lookbackMonths}mo lookback = ${CANONICAL_TSMOM.lookback} bars, ` +
+    `${CANONICAL_TSMOM_SPEC.volWindowMonths}mo vol = ${CANONICAL_TSMOM.volWindow} bars, ` +
     `${(CANONICAL_TSMOM.volTargetAnnual * 100).toFixed(0)}% target, rebalance every ${CANONICAL_TSMOM.rebalanceEvery}`);
   console.log(`${"═".repeat(78)}\n`);
 
@@ -245,9 +255,10 @@ async function main(): Promise<void> {
 
   if (sweep) {
     console.log(`\n  ROBUSTNESS — lookback sweep (post-hoc; headline stays ${CANONICAL_TSMOM.lookback}d)`);
-    for (const lookback of [63, 126, 189, 252, 315, 378]) {
-      const s = summarise(run({ ...CANONICAL_TSMOM, lookback }, "momentum"));
-      console.log(`    ${String(lookback).padStart(4)}d   return ${pct(s.annualReturn).padStart(8)}/yr   Sharpe ${sh(s.sharpeRatio).padStart(7)}   maxDD ${s.maxDD.toFixed(1).padStart(5)}%`);
+    for (const months of [3, 6, 9, 12, 15, 18]) {
+      const cfg = calibrate({ ...CANONICAL_TSMOM_SPEC, lookbackMonths: months }, PERIODS_PER_YEAR);
+      const s = summarise(run(cfg, "momentum"));
+      console.log(`    ${String(months).padStart(2)}mo (${String(cfg.lookback).padStart(3)} bars)   return ${pct(s.annualReturn).padStart(8)}/yr   Sharpe ${sh(s.sharpeRatio).padStart(7)}   maxDD ${s.maxDD.toFixed(1).padStart(5)}%`);
     }
   }
 

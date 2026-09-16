@@ -103,3 +103,23 @@ export function trailingReturn(
   if (from === null || to === null || from <= 0) return null;
   return to / from - 1;
 }
+
+/**
+ * Bars per year in an aligned calendar, measured rather than assumed.
+ *
+ * This matters more than it looks. A union calendar mixing 7-day crypto with
+ * 5-day FX runs at roughly 336 bars a year, not the 252 that "trading days"
+ * suggests. Assuming 252 on such a calendar makes a "12-month" lookback really
+ * 9 months, understates annualised volatility by a factor of 0.87 (so a 10%
+ * volatility target runs about 15% hot), and mis-annualises every reported
+ * return and Sharpe ratio. All three happened in the first run of study 2.
+ */
+export function barsPerYear(dates: string[]): number {
+  if (dates.length < 2) return 252;
+  const spanMs = Date.parse(dates[dates.length - 1]) - Date.parse(dates[0]);
+  const years = spanMs / (365.25 * 24 * 3_600_000);
+  if (years <= 0) return 252;
+  // N dates span N-1 intervals. Dividing by N overstates the density by
+  // N/(N-1), which is small but is a bias rather than noise.
+  return (dates.length - 1) / years;
+}
