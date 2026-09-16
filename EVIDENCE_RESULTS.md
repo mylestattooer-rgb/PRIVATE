@@ -13,6 +13,43 @@
 > specification's swap rates, which have not been supplied. The measured number
 > narrowed the uncertainty on the wrong term.
 
+> **Swap sensitivity, 2026-09-16 — the last unmeasured cost cannot change the
+> verdict, and asking for it is closed.**
+>
+> Financing was the one cost still assumed. Rather than treat it as blocking, it
+> was swept across every plausible rate, with the config fixed at the in-sample
+> best and the measured spread held constant. Reproduce with
+> `npm run evidence -- --swap-sweep --symbol GCUSD`.
+>
+> | Swap %/yr | Strategy total | Strategy /yr | Buy & hold |
+> |---|---|---|---|
+> | 0% | +10.42% | **0.79%** | +130.19% |
+> | 3% | +7.95% | **0.61%** | +57.83% |
+> | 5% | +6.31% | **0.49%** | +9.58% |
+> | 8% | +3.84% | **0.30%** | −62.79% |
+> | 12% | +0.55% | **0.04%** | −159.28% |
+>
+> The ordering flips somewhere between 5% and 8%, and the first reading is that
+> the missing number matters enormously. **That reading is wrong**, and the
+> reason is the same methodological trap already caught on EURUSD.
+>
+> Buy-and-hold pays financing every day it is held; the strategy pays only while
+> in a position. So a higher rate punishes the baseline far harder. At 8% the
+> baseline loses 62.79% — because *holding a financed gold position for twelve
+> and a half years* is not something anyone would do. The strategy does not
+> become good at high swap; **the baseline becomes absurd.**
+>
+> Against the benchmark that actually applies, it is unambiguous. The strategy
+> returns between **0.04% and 0.79% a year**. A 4% cash deposit returns 4.00% a
+> year — **+63.47%** over the same window. The strategy loses to a savings
+> account at every swap rate tested, by a factor of five to a hundred.
+>
+> Two conclusions follow. **The swap rate is no longer worth collecting** for
+> this purpose: no value in or beyond the plausible range changes the answer.
+> And the EURUSD finding generalises — **buy-and-hold is a broken baseline for
+> any financed instrument, not just currencies.** Cash is the honest comparison
+> throughout, and protocol 2 already adopted it.
+
 Run under `EVIDENCE_PROTOCOL.md`, committed before any backtest existed.
 
 ## Verdict

@@ -168,6 +168,49 @@ async function single(symbol: string, config: Config, outOfSample: boolean): Pro
   }
 }
 
+/**
+ * How much does the unknown swap rate actually matter?
+ *
+ * Financing is the one cost still assumed rather than measured. Rather than
+ * treat that as blocking, this sweeps it across every plausible rate and asks
+ * where — if anywhere — the verdict would change.
+ *
+ * The asymmetry is the point: buy-and-hold pays financing every single day it
+ * is held, while the strategy pays only while it happens to be in a position.
+ * A higher swap rate therefore hurts the baseline harder than the strategy, so
+ * if the strategy ever wins, it wins at HIGH financing, not low.
+ */
+async function swapSweep(symbol: string): Promise<void> {
+  const { inSample } = splitBars(loadBars(symbol), SPLIT_DATE);
+  const spec = INSTRUMENTS[symbol];
+  const best: Config = { fast: 20, slow: 50, atrStop: 3, rewardToRisk: 0 };
+
+  console.log(`\n=== SWAP SENSITIVITY: ${symbol} ===`);
+  console.log(`${inSample.length} bars, ${inSample[0].time.slice(0, 10)} -> ${inSample[inSample.length - 1].time.slice(0, 10)}`);
+  console.log(`config fixed at the in-sample best (${best.fast}/${best.slow}, atr ${best.atrStop}, rr ${best.rewardToRisk})`);
+  console.log(`spread held at the MEASURED ${spec.halfSpreadBps} bps/side\n`);
+  console.log(`  ${"swap %/yr".padEnd(12)}${"strategy".padStart(11)}${"buy & hold".padStart(13)}${"gap".padStart(11)}  verdict`);
+
+  const original = spec.annualFinancingPct;
+  for (const rate of [0, 1, 2, 3, 5, 8, 12, 20, 30]) {
+    spec.annualFinancingPct = rate;
+    const result = await run(symbol, inSample, best);
+    const baseline = buyAndHold(inSample, STARTING_CASH, costModel(symbol));
+    const gap = result.metrics.totalReturnPct - baseline.totalReturnPct;
+    const wins = gap > 0;
+    console.log(
+      `  ${`${rate}%`.padEnd(12)}${pct(result.metrics.totalReturnPct).padStart(11)}` +
+        `${pct(baseline.totalReturnPct).padStart(13)}${pct(gap).padStart(11)}  ${wins ? "STRATEGY WINS" : "baseline wins"}`,
+    );
+  }
+  spec.annualFinancingPct = original;
+
+  console.log(`\n  Both legs pay the same rate. The strategy is only exposed part of the`);
+  console.log(`  time, so a higher rate penalises buy-and-hold more — if the ordering`);
+  console.log(`  ever flips, it flips at the high end, and the flip point tells you`);
+  console.log(`  whether the unmeasured swap rate could plausibly change the verdict.\n`);
+}
+
 async function main(): Promise<void> {
   const argv = process.argv.slice(2);
   const flag = (name: string) => argv.includes(`--${name}`);
@@ -178,6 +221,7 @@ async function main(): Promise<void> {
   const symbolIndex = argv.indexOf("--symbol");
   const symbol = symbolIndex === -1 ? "EURUSD" : argv[symbolIndex + 1];
 
+  if (flag("swap-sweep")) return swapSweep(symbol);
   if (flag("sweep")) return sweep(symbol);
 
   return single(
