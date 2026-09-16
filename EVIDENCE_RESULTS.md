@@ -1,5 +1,18 @@
 # EVIDENCE RESULTS — in-sample, 2026-09-16
 
+> **Re-run with a measured spread, 2026-09-16.** The operator supplied an MT5
+> export (99,879 XAUUSD minute bars), giving a median spread of 10 points —
+> 0.230 bps round trip, against the 2.5 bps this study assumed. The assumption
+> was about eleven times too pessimistic. **The verdict does not change:** still
+> 0 of 36 configurations beat buy-and-hold, and the best moved from +7.85% to
+> +7.95% over twelve and a half years.
+>
+> That 0.10-point movement is the useful part. Total costs barely shifted, which
+> means **spread was never the dominant cost here — financing is**, and
+> financing is still assumed at 3%/yr because it comes from the symbol
+> specification's swap rates, which have not been supplied. The measured number
+> narrowed the uncertainty on the wrong term.
+
 Run under `EVIDENCE_PROTOCOL.md`, committed before any backtest existed.
 
 ## Verdict

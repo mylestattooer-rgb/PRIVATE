@@ -28,11 +28,27 @@ import {
 const SPLIT_DATE = "2020-01-01T00:00:00.000Z";
 const STARTING_CASH = 10_000;
 
-/** Protocol §4. ASSUMED, not measured — replace with the real specification. */
-const INSTRUMENTS: Record<string, { halfSpreadBps: number; commissionBps: number; annualFinancingPct: number; barsPerYear: number }> = {
-  EURUSD: { halfSpreadBps: 0.75, commissionBps: 0.5, annualFinancingPct: 3, barsPerYear: 252 },
-  GCUSD: { halfSpreadBps: 1.25, commissionBps: 0.5, annualFinancingPct: 3, barsPerYear: 252 },
-  BTCUSD: { halfSpreadBps: 5, commissionBps: 1, annualFinancingPct: 10, barsPerYear: 365 },
+/**
+ * Protocol §4 costs. Spread for GCUSD is now MEASURED, the rest are still
+ * assumed — the distinction is marked per row rather than left to memory.
+ *
+ * GCUSD's figure comes from 99,879 minute bars exported from the operator's own
+ * MT5 terminal (XAUUSD, 2026-06-02 to 2026-09-16): median spread 10 points at a
+ * 0.01 point size on a ~4342 price = 0.230 bps round trip, so 0.115 bps a side.
+ * The previous assumption of 1.25 bps a side was about eleven times too
+ * pessimistic.
+ *
+ * COMEX GCUSD stands in for the broker's XAUUSD on the strength of a measured
+ * 0.99 return correlation at 20-40 day horizons (0.84 at one day, which is
+ * venue and snapshot-time noise) and roughly 0.9%/yr of drift.
+ *
+ * Financing stays ASSUMED for every row: it comes from the symbol
+ * specification's swap rates, which have not been supplied.
+ */
+const INSTRUMENTS: Record<string, { halfSpreadBps: number; commissionBps: number; annualFinancingPct: number; barsPerYear: number; spreadMeasured: boolean }> = {
+  EURUSD: { halfSpreadBps: 0.75, commissionBps: 0.5, annualFinancingPct: 3, barsPerYear: 252, spreadMeasured: false },
+  GCUSD: { halfSpreadBps: 0.115, commissionBps: 0.5, annualFinancingPct: 3, barsPerYear: 252, spreadMeasured: true },
+  BTCUSD: { halfSpreadBps: 5, commissionBps: 1, annualFinancingPct: 10, barsPerYear: 365, spreadMeasured: false },
 };
 
 function costModel(symbol: string): CostModel {
@@ -94,6 +110,8 @@ async function sweep(symbol: string): Promise<void> {
   console.log(`${grid.length} configurations evaluated (disclosed per protocol §8.1)\n`);
 
   const baseline = buyAndHold(inSample, STARTING_CASH, costModel(symbol));
+  const spec = INSTRUMENTS[symbol];
+  console.log(`  spread: ${spec.halfSpreadBps} bps/side (${spec.spreadMeasured ? "MEASURED from the broker's export" : "assumed"}), financing ${spec.annualFinancingPct}%/yr (assumed)`);
   console.log(`  buy-and-hold baseline: ${pct(baseline.totalReturnPct)}  (drawdown ${baseline.maxDrawdownPct.toFixed(1)}%)\n`);
 
   const rows: { config: Config; result: BacktestResult }[] = [];
