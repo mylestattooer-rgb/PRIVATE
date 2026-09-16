@@ -16,5 +16,7 @@ export { aggregateToDaily, isIntraday, parseMt5Export, spreadPointsToBps } from 
 export type { AggregateOptions, Mt5Bar, Mt5ImportOptions, Mt5ImportResult, SpreadSummary } from "./mt5-import";
 export { breakEvenHitRate, classify, hourlyProfile } from "./intraday";
 export { detectableEdge, independentSamples, requiredSamples } from "./power";
+export { buildObservations, grossBps, hitRate, isReversal } from "./reversion";
+export type { BuildOptions, HitRate, Observation } from "./reversion";
 export type { PowerSpec } from "./power";
 export type { Feasibility, Horizon, HorizonStat, HourProfile } from "./intraday";

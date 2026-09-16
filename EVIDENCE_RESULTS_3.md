@@ -139,7 +139,67 @@ from the symbol specification — is worth more than another hypothesis.
   exactly which one would have done it. That is precisely why it is stated with
   its refutation attached.
 
-## 8. Honest assessment
+## 8. Adversarial review of this result
+
+Run immediately after publication, on the principle that a 4.3-sigma finding
+out of a brand-new script is exactly where to look for one's own bug. The same
+exercise found nine real bugs earlier in this project, one of which invalidated
+a published number.
+
+**Three things were checked. The result survived all three, and one of them
+strengthens it.**
+
+**1. Does the trigger do anything, or is this just generic reversion?** The
+worry came from this document's own P2, which was nearly flat. If conditioning
+on move size changes nothing, "absorption" is the wrong story and the effect is
+unconditional negative autocorrelation.
+
+| | n | Hit rate |
+|---|---|---|
+| All observations | 13,849 | 52.02% |
+| Above-median move | 6,924 | **52.77%** |
+| Below-median move | 6,925 | **51.26%** |
+
+**The trigger does real work — a 1.51 point gap.** The effect scales with the
+size of the move, which is what the inventory mechanism predicts and what P2's
+narrow comparison was too weak to show.
+
+> **This is post-hoc and does not replace P2.** P2 was pre-registered as top
+> quintile versus the 50–80th band, and that is what it stays. The comparison
+> above was constructed after seeing the result, which is exactly the kind of
+> test that can be built until it says what one wants. It is reported as a
+> diagnostic, it is *not* counted toward the hypothesis, and it changes no
+> verdict. The pre-registered P2 result stands as reported: passes, weakly,
+> underpowered.
+
+**2. Are consecutive observations independent?** They share a bar — observation
+`i+h`'s trigger return *is* observation `i`'s forward return — so the hit
+indicators could be correlated and the standard error understated, which would
+undermine the "4.3 SE" claim directly.
+
+Measured lag-1 autocorrelation of the hit indicator: **−0.016**. Effectively
+zero, and the sign means the naive standard error is marginally *conservative*
+rather than optimistic. The independence assumption holds.
+
+**3. Is the trailing median causal?** Substituting a whole-sample median for
+the causal trailing one scores **0.15 points higher** — look-ahead flattering
+the result by precisely the amount one would expect. The study used the causal
+version, confirmed by test.
+
+**What the review did find: the analysis had no tests.** Every other
+calculation in this repository is pinned; the one that produced a publishable
+number was written inline in a script and verified by nothing. That is now
+fixed — the logic is in `app/lib/domains/research/reversion.ts` behind 14
+tests, including recovery of a known reversion rate from a hand-built series,
+rejection of windows straddling a session gap, and a case where a 67% hit rate
+still loses money. Re-running through the tested module reproduces every figure
+in this document exactly.
+
+Writing those tests while the answer was not in doubt is the point. They would
+have been written anyway if something had gone wrong later, and by then they
+would have been written to match whatever the code already did.
+
+## 9. Honest assessment
 
 Three hypotheses, three falsifications, and the quality of the failures has
 improved each time: from "the strategy is indistinguishable from doing nothing",
