@@ -121,9 +121,31 @@ the most dangerous sentence in this document:
 - Better execution is not free. A raw-spread account charges commission, which
   this model does not include and which would have to come out of the same 11%.
 
-**It is not a reason to trade this, and it will not be used as one.** It is the
-reason the broker's actual commission schedule — the one number still missing
-from the symbol specification — is worth more than another hypothesis.
+**It is not a reason to trade this, and it will not be used as one.**
+
+### The threshold, in the units a contract specification prints
+
+Rather than ask for the broker's commission schedule, here is the number it
+would have to beat. Anyone can check it against a real account in one look.
+
+At the window's median gold price of $4,056.86 and a standard 100-ounce lot:
+
+| | $/oz | Points | **Per lot, round turn** |
+|---|---|---|---|
+| What the effect is worth — the whole budget | 0.11570 | 11.57 | **$11.57** |
+| What the spread alone costs | 0.13000 | 13.00 | **$13.00** |
+
+**Over budget by $1.43 per lot before a single cent of commission.**
+
+So a raw-spread account would have to come in under **$11.57 per lot all in** —
+spread plus commission plus slippage — merely to reach zero. That is the entire
+test, and it does not need any number from anyone: it can be read off a contract
+specification and compared.
+
+Two things make it harder than that table looks. The $11.57 is computed from a
+spread measurement biased optimistic (§4.1), so the real budget is smaller. And
+arriving exactly at $11.57 buys a strategy that trades 6,724 times for an
+expected return of zero, with drawdown and operational risk on top.
 
 ## 7. What was not done
 

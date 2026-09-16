@@ -114,6 +114,12 @@ That reframes the search. Not "find an effect" — this repo has one now, in
 Those are different problems, and the second is much harder, because the market
 clears at the lowest cost in it.
 
+The whole question reduces to one line off a contract specification. At the
+window's median gold price and a 100-ounce lot, the effect is worth **$11.57
+per lot round turn** — that is the entire budget for spread, commission and
+slippage together. The spread alone costs **$13.00**. Over budget by $1.43
+before any commission, on a budget that is itself measured optimistically.
+
 ### The number that matters most
 
 Hypothesis 2's signal predicted the next period's direction **48.3%** of the
