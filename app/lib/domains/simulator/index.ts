@@ -60,3 +60,7 @@ export type { BacktestConfig, BacktestResult, RejectionRecord, Strategy, Strateg
 export { atr, crossedAbove, crossedBelow, sma, trueRange } from "./indicators";
 export { createSmaCrossoverStrategy, DEFAULT_SMA_CONFIG } from "./strategies/sma-crossover";
 export type { SmaCrossoverConfig } from "./strategies/sma-crossover";
+
+export { buyAndHold, evaluate, splitBars, PREREGISTERED_CRITERIA } from "./evidence";
+export type { BaselineResult, CostModel, Criteria, CriterionResult, Evaluation, SplitResult } from "./evidence";
+export { applyFinancing } from "./portfolio";

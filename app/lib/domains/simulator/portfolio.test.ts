@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyFill, computeEquity, emptyAccount, marketValue, unrealizedPnl } from "./portfolio";
+import { applyFill, applyFinancing, computeEquity, emptyAccount, marketValue, unrealizedPnl } from "./portfolio";
 import type { Fill, Order, Position } from "./types";
 
 const order = (overrides: Partial<Order> = {}): Order => ({
@@ -203,7 +203,43 @@ describe("valuation helpers", () => {
   });
 
   it("falls back to entry price when a mark is missing", () => {
-    const account = { cash: 0, positions: [long], realizedPnl: 0, commissionPaid: 0 };
+    const account = { cash: 0, positions: [long], realizedPnl: 0, commissionPaid: 0, financingPaid: 0 };
     expect(computeEquity(account, {})).toBe(1_000);
+  });
+});
+
+describe("applyFinancing", () => {
+  const withPosition = () => applyFill(emptyAccount(10_000), order(), fill()).account;
+
+  it("charges financing on gross notional and tracks it apart from commission", () => {
+    const charged = applyFinancing(withPosition(), { AAPL: 100 }, 1);
+    // 10 units at 100 = 1000 notional, 1bp = 0.10.
+    expect(charged.financingPaid).toBe(0.1);
+    expect(charged.cash).toBe(8_997.9);
+    expect(charged.commissionPaid).toBe(2);
+  });
+
+  it("charges the short side too, rather than crediting it", () => {
+    const short = applyFill(
+      emptyAccount(10_000),
+      order({ side: "sell", positionSide: "short", stopPrice: 110 }),
+      fill({ side: "sell", positionSide: "short" }),
+    ).account;
+    expect(applyFinancing(short, { AAPL: 100 }, 1).financingPaid).toBe(0.1);
+  });
+
+  it("compounds across periods, which is how a slow strategy bleeds out", () => {
+    let account = withPosition();
+    for (let day = 0; day < 10; day++) account = applyFinancing(account, { AAPL: 100 }, 1);
+    expect(account.financingPaid).toBeCloseTo(1, 6);
+  });
+
+  it("is a no-op with no positions or a zero rate", () => {
+    expect(applyFinancing(emptyAccount(10_000), {}, 5).financingPaid).toBe(0);
+    expect(applyFinancing(withPosition(), { AAPL: 100 }, 0).financingPaid).toBe(0);
+  });
+
+  it("falls back to entry price when a mark is missing", () => {
+    expect(applyFinancing(withPosition(), {}, 1).financingPaid).toBe(0.1);
   });
 });

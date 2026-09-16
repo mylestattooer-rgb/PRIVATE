@@ -95,6 +95,11 @@ export type AccountState = {
   positions: Position[];
   realizedPnl: number;
   commissionPaid: number;
+  /** Cumulative overnight financing / swap. Tracked apart from commission
+   *  because it scales with TIME HELD rather than with trade count, and the two
+   *  are diagnosed differently: high commission means trade less, high financing
+   *  means hold shorter. */
+  financingPaid: number;
 };
 
 export type ExitReason = "stop" | "target" | "signal" | "end_of_data" | "kill_switch";

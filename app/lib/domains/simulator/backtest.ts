@@ -24,7 +24,7 @@
 
 import { assertValidSeries } from "./datasource";
 import { computeMetrics, type BacktestMetrics } from "./metrics";
-import { applyFill, computeEquity, emptyAccount, findPosition } from "./portfolio";
+import { applyFill, applyFinancing, computeEquity, emptyAccount, findPosition } from "./portfolio";
 import {
   assessSignal,
   DEFAULT_RISK_LIMITS,
@@ -86,6 +86,10 @@ export type BacktestConfig = {
   flattenOnKillSwitch?: boolean;
   /** Bars per year, for the Sharpe annualization only. 252 ≈ daily equities. */
   periodsPerYear?: number;
+  /** Overnight financing charged per BAR on open position notional, in basis
+   *  points. On a leveraged instrument this is often the difference between a
+   *  strategy that works and one that pays its broker to lose slowly. */
+  financingBpsPerBar?: number;
 };
 
 export type BacktestResult = {
@@ -180,6 +184,7 @@ export async function runBacktest(config: BacktestConfig): Promise<BacktestResul
     dataSourceId = "unspecified",
     flattenOnKillSwitch = true,
     periodsPerYear = 252,
+    financingBpsPerBar = 0,
   } = config;
 
   if (adapter.isLive) throw new LiveExecutionError(adapter.name);
@@ -197,7 +202,7 @@ export async function runBacktest(config: BacktestConfig): Promise<BacktestResul
       trades: [],
       rejections: [],
       killSwitchTrips: [],
-      metrics: computeMetrics([], [], 0, periodsPerYear),
+      metrics: computeMetrics([], [], { commission: 0, financing: 0 }, periodsPerYear),
       finalAccount: account,
     };
   }
@@ -246,6 +251,10 @@ export async function runBacktest(config: BacktestConfig): Promise<BacktestResul
         if (fill) record(order, fill, exit.reason);
       }
     }
+
+    // Financing on whatever survived the exits above, charged before equity is
+    // marked so the cost shows up in the curve on the bar it was incurred.
+    account = applyFinancing(account, { [symbol]: bar.close }, financingBpsPerBar);
 
     // 3. Mark to this bar's close and re-evaluate the daily-loss halt.
     const day = tradingDay(bar.time);
@@ -337,7 +346,12 @@ export async function runBacktest(config: BacktestConfig): Promise<BacktestResul
     trades,
     rejections,
     killSwitchTrips,
-    metrics: computeMetrics(equityCurve, trades, account.commissionPaid, periodsPerYear),
+    metrics: computeMetrics(
+      equityCurve,
+      trades,
+      { commission: account.commissionPaid, financing: account.financingPaid },
+      periodsPerYear,
+    ),
     finalAccount: account,
   };
 }

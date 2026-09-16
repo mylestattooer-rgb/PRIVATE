@@ -27,6 +27,10 @@ export type BacktestMetrics = {
   barCount: number;
   tradeCount: number;
   commissionPaid: number;
+  financingPaid: number;
+  /** Commission + financing. The number to compare against gross profit when
+   *  deciding whether a strategy is paying for itself or for its broker. */
+  totalCosts: number;
   journal: JournalStats;
 };
 
@@ -75,10 +79,12 @@ export function sharpeRatio(curve: EquityPoint[], periodsPerYear = 252): number 
   return Number(((mean / stdDev) * Math.sqrt(periodsPerYear)).toFixed(4));
 }
 
+export type CostTotals = { commission: number; financing: number };
+
 export function computeMetrics(
   curve: EquityPoint[],
   trades: ClosedTrade[],
-  commissionPaid: number,
+  costs: CostTotals,
   periodsPerYear = 252,
 ): BacktestMetrics {
   const startingEquity = curve[0]?.equity ?? 0;
@@ -96,7 +102,9 @@ export function computeMetrics(
     sharpe: sharpeRatio(curve, periodsPerYear),
     barCount: curve.length,
     tradeCount: trades.length,
-    commissionPaid: roundCash(commissionPaid),
+    commissionPaid: roundCash(costs.commission),
+    financingPaid: roundCash(costs.financing),
+    totalCosts: roundCash(costs.commission + costs.financing),
     journal: computeJournalStats(trades),
   };
 }

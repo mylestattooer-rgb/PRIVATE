@@ -19,7 +19,7 @@ import { roundCash } from "./money";
 import type { AccountState, ClosedTrade, ExitReason, Fill, Order, Position } from "./types";
 
 export function emptyAccount(startingCash: number): AccountState {
-  return { cash: startingCash, positions: [], realizedPnl: 0, commissionPaid: 0 };
+  return { cash: startingCash, positions: [], realizedPnl: 0, commissionPaid: 0, financingPaid: 0 };
 }
 
 export function marketValue(position: Position, markPrice: number): number {
@@ -109,6 +109,7 @@ export function applyFill(
         positions: [...account.positions, position],
         realizedPnl: account.realizedPnl,
         commissionPaid: roundCash(account.commissionPaid + fill.commission),
+        financingPaid: account.financingPaid,
       },
       closed: null,
     };
@@ -170,7 +171,39 @@ export function applyFill(
       positions,
       realizedPnl: roundCash(account.realizedPnl + netPnl),
       commissionPaid: roundCash(account.commissionPaid + fill.commission),
+      financingPaid: account.financingPaid,
     },
     closed,
+  };
+}
+
+/**
+ * Charge one period of overnight financing on every open position.
+ *
+ * Applied to gross notional and to BOTH directions. On a retail CFD account the
+ * short side rarely earns carry once the broker's markup is taken out, so
+ * crediting shorts would flatter every short-biased strategy. Charging both is
+ * the pessimistic and more usually correct choice; a venue that genuinely pays
+ * the short side needs a signed rate here instead.
+ *
+ * This is the cost that makes a slow strategy lose money while its entry logic
+ * looks fine, and the simulator had no model of it at all before this.
+ */
+export function applyFinancing(
+  account: AccountState,
+  marks: Record<string, number>,
+  bpsPerPeriod: number,
+): AccountState {
+  if (bpsPerPeriod <= 0 || account.positions.length === 0) return account;
+
+  const charge = account.positions.reduce((sum, p) => {
+    const mark = marks[p.symbol] ?? p.avgEntryPrice;
+    return sum + Math.abs(p.quantity * mark) * (bpsPerPeriod / 10_000);
+  }, 0);
+
+  return {
+    ...account,
+    cash: roundCash(account.cash - charge),
+    financingPaid: roundCash(account.financingPaid + charge),
   };
 }

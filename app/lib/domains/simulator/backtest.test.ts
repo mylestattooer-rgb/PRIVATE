@@ -308,6 +308,44 @@ describe("daily-loss halt", () => {
   });
 });
 
+describe("financing", () => {
+  const bars = daily([
+    [100, 101, 99, 100],
+    [100, 101, 99, 100],
+    [100, 101, 99, 100],
+    [100, 101, 99, 100],
+    [100, 101, 99, 100],
+  ]);
+
+  it("charges a holding cost for every bar a position is open", async () => {
+    const free = await runBacktest({
+      symbol: "TEST", bars, strategy: scripted({ 0: enterLong(90) }),
+      adapter: createIdealBroker(), startingCash: 10_000,
+      limits: { ...DEFAULT_RISK_LIMITS },
+    });
+    const charged = await runBacktest({
+      symbol: "TEST", bars, strategy: scripted({ 0: enterLong(90) }),
+      adapter: createIdealBroker(), startingCash: 10_000,
+      limits: { ...DEFAULT_RISK_LIMITS }, financingBpsPerBar: 10,
+    });
+
+    expect(free.metrics.financingPaid).toBe(0);
+    expect(charged.metrics.financingPaid).toBeGreaterThan(0);
+    // The same trades, made strictly worse by the cost of holding them.
+    expect(charged.metrics.endingEquity).toBeLessThan(free.metrics.endingEquity);
+    expect(charged.metrics.totalCosts).toBe(charged.metrics.financingPaid);
+  });
+
+  it("charges nothing while flat", async () => {
+    const result = await runBacktest({
+      symbol: "TEST", bars, strategy: scripted({}),
+      adapter: createIdealBroker(), startingCash: 10_000,
+      limits: { ...DEFAULT_RISK_LIMITS }, financingBpsPerBar: 50,
+    });
+    expect(result.metrics.financingPaid).toBe(0);
+  });
+});
+
 describe("result bookkeeping", () => {
   const bars = daily([
     [100, 101, 99, 100],

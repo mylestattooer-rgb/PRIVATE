@@ -79,7 +79,7 @@ describe("sharpeRatio", () => {
 
 describe("computeMetrics", () => {
   it("reports return, drawdown and trade counts together", () => {
-    const metrics = computeMetrics(curve([10_000, 10_500, 10_200, 11_000]), [trade(600), trade(-100)], 12);
+    const metrics = computeMetrics(curve([10_000, 10_500, 10_200, 11_000]), [trade(600), trade(-100)], { commission: 12, financing: 3 });
 
     expect(metrics.startingEquity).toBe(10_000);
     expect(metrics.endingEquity).toBe(11_000);
@@ -87,10 +87,12 @@ describe("computeMetrics", () => {
     expect(metrics.maxDrawdownPct).toBeCloseTo(2.857, 3);
     expect(metrics.tradeCount).toBe(2);
     expect(metrics.commissionPaid).toBe(12);
+    expect(metrics.financingPaid).toBe(3);
+    expect(metrics.totalCosts).toBe(15);
   });
 
   it("delegates win rate and average R to the journal domain", () => {
-    const metrics = computeMetrics(curve([10_000, 10_100]), [trade(100, 2), trade(-50, -1), trade(200, 3)], 0);
+    const metrics = computeMetrics(curve([10_000, 10_100]), [trade(100, 2), trade(-50, -1), trade(200, 3)], { commission: 0, financing: 0 });
     expect(metrics.journal.totalTrades).toBe(3);
     expect(metrics.journal.winRatePct).toBeCloseTo(66.67, 1);
     expect(metrics.journal.avgRMultiple).toBeCloseTo(1.333, 3);
@@ -99,7 +101,7 @@ describe("computeMetrics", () => {
   });
 
   it("handles a run with no bars", () => {
-    const metrics = computeMetrics([], [], 0);
+    const metrics = computeMetrics([], [], { commission: 0, financing: 0 });
     expect(metrics.startingEquity).toBe(0);
     expect(metrics.totalReturnPct).toBe(0);
     expect(metrics.sharpe).toBeNull();
