@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { masteryStateForStreak, applyMasteryEvidence } from "./mastery";
+import { masteryStateForStreak, applyMasteryEvidence, masteryTransition } from "./mastery";
 
 describe("masteryStateForStreak", () => {
   it("returns NOT_INTRODUCED when never attempted, regardless of streak value", () => {
@@ -30,5 +30,63 @@ describe("applyMasteryEvidence", () => {
   it("resets the streak to 0 (state INTRODUCED) on an incorrect answer", () => {
     expect(applyMasteryEvidence(5, false)).toEqual({ consecutiveCorrect: 0, state: "INTRODUCED" });
     expect(applyMasteryEvidence(0, false)).toEqual({ consecutiveCorrect: 0, state: "INTRODUCED" });
+  });
+});
+
+describe("masteryTransition", () => {
+  it("starts from NOT_INTRODUCED when no mastery row exists yet", () => {
+    // Not INTRODUCED: a null row means never attempted, which is a different
+    // thing from an attempted concept sitting on a zero streak.
+    expect(masteryTransition(null, 0, true)).toEqual({
+      fromState: "NOT_INTRODUCED",
+      toState: "LEARNING",
+      fromStreak: 0,
+      toStreak: 1,
+      changed: true,
+    });
+  });
+
+  it("records a first wrong answer as NOT_INTRODUCED -> INTRODUCED", () => {
+    expect(masteryTransition(null, 0, false)).toEqual({
+      fromState: "NOT_INTRODUCED",
+      toState: "INTRODUCED",
+      fromStreak: 0,
+      toStreak: 0,
+      changed: true,
+    });
+  });
+
+  it("marks changed=false when the streak grows but the ladder position holds", () => {
+    // 3 -> 4 both sit in APPLIED. This is the case that would be lost
+    // entirely if the ledger only recorded state changes: real evidence,
+    // real streak movement, no transition.
+    expect(masteryTransition("APPLIED", 3, true)).toEqual({
+      fromState: "APPLIED",
+      toState: "APPLIED",
+      fromStreak: 3,
+      toStreak: 4,
+      changed: false,
+    });
+  });
+
+  it("records the fall back to INTRODUCED when a long streak breaks", () => {
+    expect(masteryTransition("MASTERED", 9, false)).toEqual({
+      fromState: "MASTERED",
+      toState: "INTRODUCED",
+      fromStreak: 9,
+      toStreak: 0,
+      changed: true,
+    });
+  });
+
+  it("agrees with applyMasteryEvidence on the resulting state and streak", () => {
+    for (const streak of [0, 1, 2, 3, 5, 7, 8, 12]) {
+      for (const correct of [true, false]) {
+        const applied = applyMasteryEvidence(streak, correct);
+        const move = masteryTransition("LEARNING", streak, correct);
+        expect(move.toState).toBe(applied.state);
+        expect(move.toStreak).toBe(applied.consecutiveCorrect);
+      }
+    }
   });
 });

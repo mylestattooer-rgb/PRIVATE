@@ -9,6 +9,7 @@ import { ACHIEVEMENT_KEYS } from "@/app/lib/domains/progression/achievements";
 // file touches (Question/QuestionAttempt/XpEvent/UserAchievement/ConceptMastery).
 beforeAll(async () => {
   await prisma.userAchievement.deleteMany();
+  await prisma.conceptMasteryEvent.deleteMany();
   await prisma.conceptMastery.deleteMany();
   await prisma.xpEvent.deleteMany();
   await prisma.questionAttempt.deleteMany();
@@ -116,6 +117,65 @@ describe("gradeAttempt", () => {
     expect(second!.achievementUnlocked).toBeNull();
 
     expect(await prisma.userAchievement.count({ where: { studentId: student.id } })).toBe(1);
+  });
+
+  it("appends a mastery event per graded answer, preserving the path the snapshot overwrites", async () => {
+    const lesson = await makeLesson("mastery-ledger");
+    const concept = await prisma.concept.create({ data: { name: "Test Concept 3", slug: "questions-test-concept-3" } });
+    const question = await createQuestion({
+      lessonId: lesson.id,
+      prompt: "2+2?",
+      choices: ["3", "4"],
+      correctIndex: 1,
+      conceptIds: [concept.id],
+    });
+    const student = await makeStudent("questions-test-ledger@example.com");
+
+    // right, right, wrong: climbs to UNDERSTOOD, then falls back. The
+    // ConceptMastery row can only ever show the final state — the whole point
+    // of the ledger is that the climb is still recoverable afterwards.
+    await gradeAttempt({ studentId: student.id, questionId: question.id, selectedIndex: 1 });
+    await gradeAttempt({ studentId: student.id, questionId: question.id, selectedIndex: 1 });
+    await gradeAttempt({ studentId: student.id, questionId: question.id, selectedIndex: 0 });
+
+    const snapshot = await prisma.conceptMastery.findUnique({
+      where: { studentId_conceptId: { studentId: student.id, conceptId: concept.id } },
+    });
+    expect(snapshot?.state).toBe("INTRODUCED");
+    expect(snapshot?.consecutiveCorrect).toBe(0);
+
+    const events = await prisma.conceptMasteryEvent.findMany({
+      where: { studentId: student.id, conceptId: concept.id },
+      orderBy: { createdAt: "asc" },
+    });
+    expect(events).toHaveLength(3);
+    expect(events.map((e) => [e.fromState, e.toState])).toEqual([
+      ["NOT_INTRODUCED", "LEARNING"],
+      ["LEARNING", "UNDERSTOOD"],
+      ["UNDERSTOOD", "INTRODUCED"],
+    ]);
+    expect(events.map((e) => e.toStreak)).toEqual([1, 2, 0]);
+    expect(events.map((e) => e.correct)).toEqual([true, true, false]);
+
+    // Each event points at the attempt that produced it — the evidence link
+    // is what makes the ledger auditable rather than just a log.
+    for (const e of events) {
+      expect(e.attemptId).not.toBeNull();
+      const attempt = await prisma.questionAttempt.findUnique({ where: { id: e.attemptId! } });
+      expect(attempt?.studentId).toBe(student.id);
+      expect(attempt?.correct).toBe(e.correct);
+    }
+  });
+
+  it("writes no mastery event for a question that tests no concepts", async () => {
+    const lesson = await makeLesson("no-concepts");
+    const question = await createQuestion({ lessonId: lesson.id, prompt: "?", choices: ["a", "b"], correctIndex: 0 });
+    const student = await makeStudent("questions-test-no-concepts@example.com");
+
+    await gradeAttempt({ studentId: student.id, questionId: question.id, selectedIndex: 0 });
+
+    expect(await prisma.conceptMasteryEvent.count({ where: { studentId: student.id } })).toBe(0);
+    expect(await prisma.questionAttempt.count({ where: { studentId: student.id } })).toBe(1);
   });
 
   it("returns null instead of throwing when questionId doesn't exist", async () => {

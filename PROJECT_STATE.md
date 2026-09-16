@@ -138,6 +138,7 @@ live.
 | XP / levels | **WORKING (basic)** | `XpEvent` append-only ledger, `Level.xpThreshold`; pure `totalXp()`/`levelForXp()`; shown on student dashboard with progress to next level |
 | Achievements | **WORKING (one)** | `Achievement`/`UserAchievement`, unlocked server-side inside the grading transaction; `FIRST_QUIZ_PASSED` seeded and verified unlocking + displaying on dashboard |
 | Concept mastery | **WORKING** | `ConceptMastery`, driven by `QuestionAttempt` evidence via pure `applyMasteryEvidence()`; verified NOT_INTRODUCED→LEARNING transition on a fresh correct answer, shown on student dashboard |
+| Concept mastery **history** | **WORKING** (new 2026-09-16) | `ConceptMasteryEvent` — append-only ledger, one row per piece of evidence applied, written inside `gradeAttempt()`'s existing transaction. `ConceptMastery` is a snapshot that gets overwritten on every graded answer; this keeps the path. See "Mastery history" below |
 | Trading journal | **WORKING** | `/student/journal` — create/delete trades, deterministic stats (win rate, avg R, best/worst setup, top mistake); data isolation verified (a second student's journal correctly showed empty) |
 | Journal AI insights | **WORKING (deterministic)** | `AiInsight`, evidence-linked to the trades it summarizes; gated at 5 trades minimum (never manufactures a conclusion from too little data); text is template-based today, not yet routed through `app/lib/ai/provider.ts` — see `DATABASE.md` §2.4 |
 | Knowledge trust levels | **WORKING** | `Document.trustLevel` (A_OFFICIAL/B_INSTRUCTOR_APPROVED/C_REFERENCE/D_COMMUNITY), admin-settable at `/admin/knowledge`; both AI providers and citation UI factor it in |
@@ -293,6 +294,10 @@ whenever they're ready, didn't want to auto-rename without asking).
   append-only ledger, level is an XP-threshold lookup, achievements unlock server-side only
 - **ConceptMastery** — per-student per-concept state (NOT_INTRODUCED→...→MASTERED), driven by
   `QuestionAttempt` evidence via a pure streak-based state machine
+- **ConceptMasteryEvent** — append-only ledger of every piece of mastery evidence
+  (`fromState`/`toState`, `fromStreak`/`toStreak`, `correct`, nullable `attemptId` link to the
+  `QuestionAttempt` that caused it). Same relationship to `ConceptMastery` that `XpEvent` has to a
+  running XP total: the snapshot is derived and overwritable, the ledger is the history
 - **ModuleProgress** — per-student progress against a `Module` (status + optional score)
 - **Note** — free-text CRM notes on a student, optional author, optional pinned flag
 - **CrmActivity** — lightweight activity log distinct from AuditLog (student-facing CRM
@@ -310,6 +315,42 @@ whenever they're ready, didn't want to auto-rename without asking).
 - **AuditLog** — system-wide action log (every login, AI query/response, student/doc mutation)
 - **Approval** — human-approval gate for sensitive AI-proposed actions; schema exists, nothing
   writes to it yet since no automation feature produces approval requests in Phase 1
+
+## Mastery history (new, 2026-09-16)
+
+`ConceptMastery` is a derived snapshot, and `gradeAttempt()`'s upsert overwrites `state`,
+`consecutiveCorrect` and `lastEvidenceAt` on every graded answer. That is correct for answering
+"what does this student know right now?" and destructive for everything else: when a concept first
+clicked, how many times a streak broke and rebuilt, how long MASTERED held before it slipped — all
+of it was being thrown away on write, with no way to reconstruct it afterwards.
+
+`ConceptMasteryEvent` fixes that the same way `XpEvent` already handles XP: record every event,
+derive the total, never trust a mutable running value that can drift from its own history.
+
+- **One row per evidence application, not per state change.** A correct answer that leaves state
+  unchanged (already MASTERED) is still evidence and still moves the streak. `fromState != toState`
+  is a filter when only the transitions are wanted.
+- **Written inside the existing `$transaction`**, alongside the attempt, the XP event and the
+  snapshot upsert — a crash between them would otherwise leave a mastery state with no evidence
+  explaining it, which is exactly the drift the ledger exists to prevent.
+- **`attemptId` is nullable, `onDelete: SetNull`.** Nullable so a future non-quiz evidence source
+  (Chart Lab, simulator) can write here without another migration; SetNull rather than Cascade
+  because deleting an attempt must never silently rewrite a student's mastery history.
+- **Pure logic stays pure**: `masteryTransition()` in `app/lib/domains/progression/mastery.ts`
+  computes the movement and is unit-tested without a database; `applyMasteryEvidence()` is
+  unchanged and still the single source of the streak rule.
+
+Migration `20260916120000_add_concept_mastery_event`. Test suite 81/81 (up from 74 — 5 pure tests
+on `masteryTransition`, 2 Prisma-backed tests in `questions.test.ts` covering the
+right→right→wrong path and the no-concepts case), `eslint` clean, `tsc --noEmit` clean.
+
+**Note on `tsc` in CI**: `npx tsc --noEmit` fails from a clean checkout with
+`app/layout.tsx(20,50): Cannot find name 'LayoutProps'` — a Next 16 generated type that only
+`next build`/`next dev`/`next typegen` writes into `.next/types`. This is pre-existing and
+unrelated to this change (it reproduces identically on a stashed tree), but it means
+`.github/workflows/ci.yml` as written cannot pass its typecheck step: it runs `tsc` without ever
+generating those types. Adding `npx next typegen` before the `tsc` step fixes it. Not done here —
+flagged rather than folded into an unrelated change.
 
 ## Known issues / rough edges
 
