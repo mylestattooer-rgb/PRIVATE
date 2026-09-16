@@ -12,6 +12,9 @@
 > financing is still assumed at 3%/yr because it comes from the symbol
 > specification's swap rates, which have not been supplied. The measured number
 > narrowed the uncertainty on the wrong term.
+>
+> *(Superseded in part: the two notes below establish that the swap rate cannot
+> change the verdict, so it is no longer outstanding. Read all three together.)*
 
 > **Swap sensitivity, 2026-09-16 — the last unmeasured cost cannot change the
 > verdict, and asking for it is closed.**
