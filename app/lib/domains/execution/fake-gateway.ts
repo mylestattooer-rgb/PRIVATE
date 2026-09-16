@@ -32,6 +32,13 @@ export type FakeGateway = BrokerGateway & {
   /** Advance an order the broker holds, as a venue would. */
   fill(clientOrderId: string, quantity: number, price: number): void;
   setPositions(positions: BrokerPosition[]): void;
+  /** Queue faults after construction, so one gateway instance can be driven
+   *  through a sequence of failures. Replacing the gateway instead would be
+   *  indistinguishable from the broker losing every order it held, which the
+   *  loop correctly refuses to trade through. */
+  queueSubmitFaults(...faults: SubmitFault[]): void;
+  queueGetOrderFaults(...faults: QueryFault[]): void;
+  queueGetPositionsFaults(...faults: QueryFault[]): void;
   /** How many times submit() was called — the duplicate-order canary. */
   submitCalls(): number;
   /** How many distinct orders actually exist at the "broker". */
@@ -149,6 +156,16 @@ export function createFakeGateway(options: FakeGatewayOptions = {}): FakeGateway
 
     setPositions(next) {
       positions = next.map((p) => ({ ...p }));
+    },
+
+    queueSubmitFaults(...faults) {
+      submitFaults.push(...faults);
+    },
+    queueGetOrderFaults(...faults) {
+      getOrderFaults.push(...faults);
+    },
+    queueGetPositionsFaults(...faults) {
+      getPositionsFaults.push(...faults);
     },
 
     submitCalls: () => submitCalls,
