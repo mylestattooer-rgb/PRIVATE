@@ -16,7 +16,8 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
-    "intraday": "tsx scripts/intraday.ts"
+    "intraday": "tsx scripts/intraday.ts",
+    "study3": "tsx scripts/study3.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

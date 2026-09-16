@@ -12,6 +12,7 @@ the right to trade. Live mode is not enabled and cannot enable itself.**
 npm run backtest      # single-symbol engine, seeded synthetic data or --csv
 npm run evidence      # hypothesis 1 (moving-average crossover)
 npm run research      # hypothesis 2 (time-series momentum)
+npm run study3        # hypothesis 3 (five-minute reversion after absorption)
 npm run unattended    # the live loop, driven through a failure gauntlet
 npm run import-mt5    # import your broker's own history + measured spread
 npm run intraday      # what a strategy must achieve to cover this broker's spread
@@ -79,18 +80,39 @@ horizon, all hours, clearing about 53.2%.** Every other window is a study that
 cannot succeed, and knowing which is which cost one afternoon rather than one
 backtest.
 
-## Two studies, two falsifications
+## Three studies, three falsifications
 
-Both pre-registered — criteria and hypothesis committed **before** the data was
+All pre-registered — criteria and hypothesis committed **before** the data was
 fetched, which the commit history shows.
 
 | | Hypothesis | Result |
 |---|---|---|
 | 1 | Moving-average crossover | **Failed.** 0/36 configs beat buy-and-hold on gold; the one BTC "winner" was 3 trades |
 | 2 | Time-series momentum | **Failed.** Raw signal hit rate 48.3% over 1,371 instrument-periods |
+| 3 | Five-minute reversion after absorption | **Failed.** Effect is real — 52.62%, **4.3 SE** above a coin flip — and 11% too small to pay the spread |
 
-**The out-of-sample window has never been touched.** Neither hypothesis earned
-a run at it. That is the protocol working, not a gap.
+**No out-of-sample window has ever been touched.** No hypothesis earned a run
+at one. That is the protocol working, not a gap.
+
+### Study 3 is the informative failure
+
+The first two failed by finding nothing, which is compatible with "no effect
+exists" or "this test was too weak". The third distinguishes them and lands
+somewhere else entirely:
+
+> The effect pays for **11.6 points** per round trip. The broker charges **13**.
+> It covers **89% of the toll**, at p ≈ 0.00001.
+
+The market does not remove an inventory effect — it removes the *takeable* part
+of one, and what remains pays whoever has lower costs than you. The hit rate
+sits **0.39 SE below break-even**, so this data cannot say which side of the
+line it falls on; three separate biases in the cost estimate all run against it,
+and a pre-registered threshold does not get renegotiated after the run.
+
+That reframes the search. Not "find an effect" — this repo has one now, in
+6,724 observations. **Find an effect larger than your own cost of taking it.**
+Those are different problems, and the second is much harder, because the market
+clears at the lowest cost in it.
 
 ### The number that matters most
 
@@ -117,6 +139,12 @@ same window, owning gold outright returned roughly **+130%**.
 - **Modelling costs finds bugs.** A 522% cost drag exposed a specification error
   producing 11x leverage on a supposed 10% vol target. A backtest without a
   financing model would have shown a plausible loss and hidden the cause.
+- **Ask whether a test can succeed before running it.** Study 3's design was
+  chosen by power analysis, which forced a real concession — the sharp version
+  of the hypothesis could not be tested on this data at all — and correctly
+  predicted which of its own predictions would be too weak to conclude from. A
+  study that cannot resolve its own effect does not return "no edge"; it returns
+  a number that then gets argued about.
 - **Measure the calendar, don't assume it.** Mixing 7-day crypto with 5-day FX
   produces a union calendar running at **336 bars/year**. Every annualisation
   assumed 252, so study 2's "12-month lookback" was really 9 months and its 10%
