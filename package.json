@@ -11,6 +11,7 @@
     "backtest": "tsx scripts/backtest.ts",
     "evidence": "tsx scripts/evidence.ts",
     "research": "tsx scripts/research.ts",
+    "import-mt5": "tsx scripts/import-mt5.ts",
     "unattended": "tsx scripts/unattended.ts",
     "db:seed": "tsx prisma/seed.ts",
     "db:migrate": "prisma migrate dev",
