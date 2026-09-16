@@ -14,7 +14,7 @@ npm run evidence      # hypothesis 1 (moving-average crossover)
 npm run research      # hypothesis 2 (time-series momentum)
 npm run unattended    # the live loop, driven through a failure gauntlet
 npm run import-mt5    # import your broker's own history + measured spread
-npm test              # 395 tests
+npm test              # 436 tests
 ```
 
 ## The four domains
@@ -60,17 +60,25 @@ fetched, which the commit history shows.
 | | Hypothesis | Result |
 |---|---|---|
 | 1 | Moving-average crossover | **Failed.** 0/36 configs beat buy-and-hold on gold; the one BTC "winner" was 3 trades |
-| 2 | Time-series momentum | **Failed.** Raw signal hit rate 50.9% over 1,882 instrument-periods |
+| 2 | Time-series momentum | **Failed.** Raw signal hit rate 48.3% over 1,371 instrument-periods |
 
 **The out-of-sample window has never been touched.** Neither hypothesis earned
 a run at it. That is the protocol working, not a gap.
 
 ### The number that matters most
 
-Hypothesis 2's signal predicted the next period's direction **50.9%** of the
-time, against a standard error of 1.15%. That is 0.8 standard errors from a coin
-flip, measured *before* portfolio construction, sizing or costs. There was no
-edge to lose.
+Hypothesis 2's signal predicted the next period's direction **48.3%** of the
+time — worse than a coin flip — against a standard error of 1.35%. That is 1.3
+standard errors *below* 50%, so it is not significantly negative either: it is
+noise. It is measured *before* portfolio construction, sizing or costs, which
+settles the question of whether cost assumptions killed it. **There was no edge
+to lose.**
+
+Study 1's corrected verdict is the milder kind of failure. The best gold
+configuration beats cash by about **0.58% a year** over twelve and a half
+years — not a loss, and not remotely a reason to run an unattended system that
+carries drawdown, execution and operational risk a deposit does not. Over the
+same window, owning gold outright returned roughly **+130%**.
 
 ### What the studies taught that the returns did not
 
@@ -82,10 +90,18 @@ edge to lose.
 - **Modelling costs finds bugs.** A 522% cost drag exposed a specification error
   producing 11x leverage on a supposed 10% vol target. A backtest without a
   financing model would have shown a plausible loss and hidden the cause.
-- **Monotonic parameter sweeps are a warning.** Study 2's lookback sweep had no
-  peak — a clean gradient is the signature of a cost function, not a signal. Had
-  the parameters been searched rather than fixed, the shortest would have been
-  picked and the monotonicity would have been invisible.
+- **Measure the calendar, don't assume it.** Mixing 7-day crypto with 5-day FX
+  produces a union calendar running at **336 bars/year**. Every annualisation
+  assumed 252, so study 2's "12-month lookback" was really 9 months and its 10%
+  volatility target ran about 15% hot. Adversarial review found it *after*
+  publication; 395 tests had not. `EVIDENCE_RESULTS_2.md` §6 is corrected in
+  place, with two arguments retracted rather than quietly restated.
+- **A one-sided cost model is a rigged comparison.** Charging financing on
+  borrowed money while crediting nothing on idle cash penalises a strategy that
+  is flat most of the time. Worth ~48% of starting capital over study 1's
+  window — four times the strategy's entire modelled return. It produced a
+  dramatic and wrong conclusion, since retracted. Corrected, the rule fails for
+  the ordinary reason: it is barely distinguishable from doing nothing.
 
 ## The binding constraint is data, not ideas
 
@@ -99,53 +115,72 @@ Stated plainly, because it determines what is worth doing next.
 - **Spot prices, not total returns.** Carry and roll are excluded. For FX that
   is most of the historical return, so I tested price momentum with the paid
   component stripped out.
-- **Costs are assumed, not measured.** After two studies, spread and swap are
-  still my estimates.
+- **Spread is now measured; swap is assumed and no longer worth collecting.**
+  The operator's MT5 export puts gold's round-trip spread at **0.230 bps**
+  against the 2.5 bps assumed — eleven times too pessimistic, and it moved the
+  verdict by 0.10 points. Swap remains an assumption at 3%/yr, and
+  `--swap-sweep` shows that no value in or beyond the plausible range changes
+  either verdict. The ask for it is withdrawn.
+
+## Already settled — nothing needed from the operator
+
+Both of the asks that used to head this section are closed.
+
+- **MT5 history: supplied and imported.** AUDCAD and XAUUSD, 99,879 minute bars
+  each. `npm run import-mt5` aggregates them to daily and reads the `<SPREAD>`
+  column for the broker's real per-bar cost. The first real file immediately
+  caught an importer bug — it had been writing 99,879 rows across 70 dates,
+  silently meaningless rather than obviously broken.
+- **The COMEX proxy is validated**, so the broker's short history is not a
+  constraint. Correlation between the broker's XAUUSD and FMP's GCUSD rises with
+  horizon — 0.84 at one day, **0.99 at 20–40 days**. Lagging one series made it
+  collapse, so the daily gap is venue noise, not a clock offset. The 19 years of
+  GCUSD already committed can stand in for the broker's instrument at momentum
+  horizons.
+- **The symbol specification is no longer needed** for the swap rate.
+  `--swap-sweep` settled it without measuring it: see the note at the top of
+  `EVIDENCE_RESULTS.md`. It is still the only source for a per-instrument margin
+  requirement, which the funding-model limitation below depends on — but that
+  limitation moves no verdict.
 
 ## What would actually move this forward
 
-In order of expected value:
+In order of expected value. All three are data or ideas, not operator actions.
 
-### 1. Export your MT5 history (largest single win, costs nothing)
+### 1. Bonds and commodities
 
-In MT5: **View → Symbols →** pick your symbol **→ Bars tab → Export**. Daily
-(D1), as far back as it offers. Then:
+The largest single gap. Hypothesis 2 is a claim about a diversified futures
+basket spanning ~50 instruments, and the current plan denies bonds, energy and
+agriculturals — precisely where trend following has historically worked best.
+What remains is seven USD-driven FX pairs, three futures and two crypto, with a
+measured effective breadth of 5.36. **The supported claim is that this data
+cannot test the hypothesis, not that the hypothesis is false.**
 
-```bash
-npm run import-mt5 -- --file XAUUSD_Daily.csv --symbol XAUUSD --point 0.01
-```
+### 2. Intraday data
 
-This is worth more than a data subscription, for one reason: MT5 exports carry a
-`<SPREAD>` column. That is your broker's **measured** cost, per bar — the figure
-both studies had to guess. The prices are your broker's own too, so a backtest
-runs against quotes that would genuinely have been available to you.
+Every tier is denied on the current plan. Session effects and microstructure are
+where an edge is most plausible for a small operator, and daily bars cannot
+reach them at all.
 
-The importer reports median, mean, p95 and max spread, and converts to basis
-points given the point size. Use the median, not the mean: spread distributions
-have a long right tail and the mean reports a cost you rarely pay.
+### 3. A better hypothesis, not a better fit
 
-### 2. The symbol specification
-
-Right-click the symbol → **Specification**. Contract size, min/max/step volume,
-margin per lot, swap long/short, commission. Not credentials — public instrument
-config, safe to paste.
-
-Without it, position sizing in lots and the margin model cannot be right, and
-every result stays conditional.
-
-### 3. Broader data
-
-Bonds and commodities would let hypothesis 2 be tested properly. Intraday would
-open hypotheses that daily bars cannot reach at all.
+Two of the most heavily mined ideas in the retail space have now been tested and
+rejected on schedule. Extending either grid until something passed would produce
+a number, not evidence. The honest next move is a hypothesis with a stated
+mechanism that this data can actually test — carry, volatility regimes, or
+cross-sectional relationships — pre-registered before it is run, like the two
+before it.
 
 ## Known limitations, recorded rather than buried
 
-- **The cost model charges financing on gross exposure but never credits
-  interest on cash.** A one-sided drag that would not exist in a real account
-  earning a cash rate. Flagged deliberately rather than fixed mid-study —
-  changing a cost assumption right after it produced an unwelcome result is how
-  a backtest gets talked into working. It should be fixed before the next test,
-  and any re-run reported as a re-run. It did not change either verdict.
+- **The funding model is internally inconsistent, and says so in its own
+  source.** Cash accounting debits the full notional on open, as a cash-funded
+  equity account would, while financing is charged on that same notional, as a
+  margin account would. A position paid for outright should not also pay
+  financing. Resolving it needs a per-instrument margin requirement from the
+  broker's symbol specification. Measured size on study 1: about 2.5 points of
+  return over 12.5 years at 3%/yr — it moves no verdict, and it is written into
+  `portfolio.ts` so the next person does not rediscover it.
 - **No margin model.** Fine for cash instruments, wrong for leveraged CFDs.
 - **No partial fills or liquidity model in the simulator.** Every order fills in
   full at one price.

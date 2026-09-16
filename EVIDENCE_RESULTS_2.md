@@ -171,17 +171,27 @@ four identifiable reasons:
 **The supported claim is: this data cannot test the hypothesis properly, and
 what it can test shows nothing.** Not "TSMOM does not work."
 
-## 9. A cost-model limitation, flagged not fixed
+## 9. A cost-model limitation, flagged here and fixed afterwards
 
-The model charges financing on gross exposure but **never credits interest on
+The model charged financing on gross exposure but **never credited interest on
 unencumbered cash** — a one-sided drag that would not exist in a real account
 earning a cash rate.
 
-Flagged deliberately rather than fixed: changing a cost assumption immediately
-after it produces an unwelcome result is how a backtest gets talked into working.
-It should be fixed before the next study, and any re-run reported as a re-run.
+Flagged deliberately rather than fixed at the time: changing a cost assumption
+immediately after it produces an unwelcome result is how a backtest gets talked
+into working. It should be fixed before the next study, and any re-run reported
+as a re-run.
 
-It does not change the verdict — the strategy loses before costs.
+It does not change this verdict — the strategy loses **before** costs, so a
+correction to a cost term cannot rescue it. A 48.3% hit rate is not a cost
+problem.
+
+> **Since fixed, and it mattered elsewhere.** `applyCashInterest` closes this,
+> and a `--cash-sweep` confirms the fix by showing excess-over-cash flat across
+> a 0–4% range. On *study 1* the missing term was worth roughly 48% of starting
+> capital over 12.5 years and forced the retraction of a published conclusion —
+> see the third note at the top of `EVIDENCE_RESULTS.md`. The numbers in **this**
+> document are unaffected, for the reason above, and have not been re-run.
 
 ## 10. What was not done
 
