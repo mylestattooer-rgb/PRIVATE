@@ -344,13 +344,17 @@ Migration `20260916120000_add_concept_mastery_event`. Test suite 81/81 (up from 
 on `masteryTransition`, 2 Prisma-backed tests in `questions.test.ts` covering the
 right→right→wrong path and the no-concepts case), `eslint` clean, `tsc --noEmit` clean.
 
-**Note on `tsc` in CI**: `npx tsc --noEmit` fails from a clean checkout with
-`app/layout.tsx(20,50): Cannot find name 'LayoutProps'` — a Next 16 generated type that only
-`next build`/`next dev`/`next typegen` writes into `.next/types`. This is pre-existing and
-unrelated to this change (it reproduces identically on a stashed tree), but it means
-`.github/workflows/ci.yml` as written cannot pass its typecheck step: it runs `tsc` without ever
-generating those types. Adding `npx next typegen` before the `tsc` step fixes it. Not done here —
-flagged rather than folded into an unrelated change.
+**`tsc` in CI — fixed here, ported from the simulator branch.** `npx tsc --noEmit` fails from a
+clean checkout with `app/layout.tsx(20,50): Cannot find name 'LayoutProps'` — a Next 16 generated
+route type that only `next build`/`next dev`/`next typegen` writes into `.next/types`, which
+`tsconfig.json` includes. Pre-existing and unrelated to the mastery ledger (it reproduces
+identically on a stashed tree), but it meant `.github/workflows/ci.yml` could never pass its
+typecheck step, and it duly failed this branch's first run before the tests ever executed.
+
+`claude/ecstatic-rubin-ryhaip` (PR #1) had already diagnosed and fixed this. That exact step —
+`npx next typegen` before `npx tsc --noEmit`, with its explanatory comment — is ported here
+verbatim rather than solved a second way, so the two branches don't diverge on CI config and the
+change no-ops once PR #1 lands.
 
 ## Known issues / rough edges
 
