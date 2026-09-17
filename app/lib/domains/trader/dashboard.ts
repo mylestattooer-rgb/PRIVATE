@@ -55,7 +55,20 @@ export function renderDashboard(model: DashboardModel): string {
   }
 
   lines.push("  POSITIONS");
-  if (model.positions.length === 0) {
+  // Working orders are shown here, not only under OPEN ORDERS, because the two
+  // read as a contradiction otherwise: an operator sees "flat" while the
+  // decision log says "already in position" and has to reconcile that at
+  // whatever hour it is. Risk limits count working quantity as exposure, so the
+  // screen that explains the system's behaviour has to show the same thing.
+  const working = model.openOrders.reduce((bySymbol, o) => {
+    const residual = o.quantity - o.filledQuantity;
+    if (residual <= 0) return bySymbol;
+    const signed = o.side === "buy" ? residual : -residual;
+    bySymbol.set(o.symbol, (bySymbol.get(o.symbol) ?? 0) + signed);
+    return bySymbol;
+  }, new Map<string, number>());
+
+  if (model.positions.length === 0 && working.size === 0) {
     lines.push("    flat");
   } else {
     for (const p of model.positions) {
@@ -63,6 +76,13 @@ export function renderDashboard(model: DashboardModel): string {
       const side = p.quantity === 0 ? "flat" : p.quantity > 0 ? "long" : "short";
       lines.push(`    ${p.symbol.padEnd(10)} ${side.padEnd(6)} ${Math.abs(p.quantity)} @ ${p.averagePrice}`);
     }
+  }
+
+  for (const [symbol, quantity] of [...working.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
+    const side = quantity > 0 ? "long" : "short";
+    lines.push(
+      `    ${symbol.padEnd(10)} ${side.padEnd(6)} ${Math.abs(quantity)} WORKING (ordered, not yet filled — counts against limits)`,
+    );
   }
 
   if (model.openOrders.length > 0) {

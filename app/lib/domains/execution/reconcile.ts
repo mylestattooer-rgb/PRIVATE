@@ -51,6 +51,21 @@ export type ReconciliationReport = {
   reconciled: boolean;
   brokerPositions: BrokerPosition[];
   localPositions: PositionQuantity[];
+  /**
+   * Signed quantity still WORKING at the broker — ordered but not yet filled.
+   *
+   * Carried in the report rather than left for callers to derive, because a
+   * caller that forgets it silently loses its position limits. Measured: with
+   * one order per cycle and slow fills, three cycles put three full-size orders
+   * on the book — 30 units against a 10-unit intent — while every risk check
+   * passed, because both layers sized against filled positions only. The
+   * client-order-id guard does not help: it stops the SAME decision being sent
+   * twice, and each cycle's new bar makes a genuinely new decision.
+   *
+   * Risk limits must treat this as though it were already filled. It is the
+   * worst case, and worst case is the only safe assumption for a limit.
+   */
+  workingQuantities: PositionQuantity[];
   discrepancies: Discrepancy[];
   halt: Halt | null;
 };
@@ -82,6 +97,32 @@ export function derivePositionsFromOrders(records: OrderRecord[]): PositionQuant
     .sort((a, b) => a.symbol.localeCompare(b.symbol));
 }
 
+/**
+ * Signed quantity ordered but not yet filled, per symbol.
+ *
+ * Non-terminal orders only: a filled, rejected or cancelled order has no
+ * residual. Signed the same way as `derivePositionsFromOrders`, so a working
+ * BUY adds exposure and a working SELL removes it — which is what keeps this
+ * from ever blocking an exit, since a close order's residual pushes the number
+ * toward flat rather than away from it.
+ */
+export function deriveWorkingQuantities(records: OrderRecord[]): PositionQuantity[] {
+  const bySymbol = new Map<string, number>();
+
+  for (const record of records) {
+    if (isTerminal(record.status)) continue;
+    const residual = record.quantity - record.filledQuantity;
+    if (residual <= 0) continue;
+    const signed = record.side === "buy" ? residual : -residual;
+    bySymbol.set(record.symbol, (bySymbol.get(record.symbol) ?? 0) + signed);
+  }
+
+  return [...bySymbol.entries()]
+    .filter(([, quantity]) => Math.abs(quantity) > QUANTITY_EPSILON)
+    .map(([symbol, quantity]) => ({ symbol, quantity }))
+    .sort((a, b) => a.symbol.localeCompare(b.symbol));
+}
+
 export async function reconcile(ctx: ReconcileContext): Promise<ReconciliationReport> {
   const at = ctx.now();
   const discrepancies: Discrepancy[] = [];
@@ -97,6 +138,7 @@ export async function reconcile(ctx: ReconcileContext): Promise<ReconciliationRe
       reconciled: false,
       brokerPositions: [],
       localPositions: [],
+      workingQuantities: [],
       discrepancies: [],
       halt: {
         reason: "connectivity",
@@ -206,11 +248,16 @@ export async function reconcile(ctx: ReconcileContext): Promise<ReconciliationRe
 
   const blocking = discrepancies.filter((d) => d.blocking);
 
+  // Read AFTER the settle loop above, so residuals reflect the broker's latest
+  // fill data rather than whatever was cached at cycle start.
+  const workingQuantities = deriveWorkingQuantities(await ctx.store.all());
+
   return {
     at,
     reconciled: true,
     brokerPositions,
     localPositions,
+    workingQuantities,
     discrepancies,
     halt:
       blocking.length === 0

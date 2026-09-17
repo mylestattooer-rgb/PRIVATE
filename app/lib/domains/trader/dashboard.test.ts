@@ -87,6 +87,46 @@ describe("renderDashboard", () => {
     expect(out).toContain("✕");
   });
 
+  const workingOrder = (overrides: Record<string, unknown> = {}) => ({
+    clientOrderId: "ts-1", symbol: "TEST", side: "buy" as const, quantity: 10, intent: "open" as const,
+    stopPrice: null, takeProfitPrice: null, reason: "r", status: "submitted" as const,
+    brokerOrderId: "B1", filledQuantity: 0, averageFillPrice: null, rejectReason: null,
+    createdAt: "x", updatedAt: "x", submitAttempts: 1,
+    ...overrides,
+  });
+
+  it("shows working exposure under POSITIONS, not just under OPEN ORDERS", () => {
+    // Otherwise the screen reads as a contradiction: "flat" next to a decision
+    // log saying "already in position", which is how an operator talks
+    // themselves into intervening at three in the morning.
+    const out = renderDashboard(model({ positions: [], openOrders: [workingOrder()] }));
+    expect(out).toContain("WORKING");
+    expect(out).toContain("counts against limits");
+    expect(out).not.toContain("flat");
+  });
+
+  it("shows only the unfilled residual as working", () => {
+    const out = renderDashboard(
+      model({ positions: [], openOrders: [workingOrder({ quantity: 10, filledQuantity: 4, status: "partially_filled" })] }),
+    );
+    expect(out).toMatch(/long\s+6 WORKING/);
+  });
+
+  it("calls a working sell short", () => {
+    const out = renderDashboard(
+      model({ positions: [], openOrders: [workingOrder({ side: "sell", intent: "close" })] }),
+    );
+    expect(out).toMatch(/short\s+10 WORKING/);
+  });
+
+  it("still reads flat when an open order has nothing left to fill", () => {
+    const out = renderDashboard(
+      model({ positions: [], openOrders: [workingOrder({ quantity: 10, filledQuantity: 10 })] }),
+    );
+    expect(out).toContain("flat");
+    expect(out).not.toContain("WORKING");
+  });
+
   it("surfaces partial fills on open orders", () => {
     const out = renderDashboard(
       model({

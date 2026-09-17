@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { createFakeGateway } from "../execution/fake-gateway";
 import { createInMemoryOrderStore } from "../execution/order-store";
+import { deriveWorkingQuantities, reconcile } from "../execution/reconcile";
+import { isTerminal } from "../execution/types";
 import { LiveGatewayRefusedError, type BrokerGateway } from "../execution/gateway";
 import { holdSignal } from "../simulator/signal";
 import { DEFAULT_RISK_LIMITS } from "../simulator/risk";
@@ -364,5 +366,124 @@ describe("strategy inaction", () => {
     expect(report.orderSubmitted).toBe(false);
     expect(gateway.orderCount()).toBe(0);
     expect(report.decisions.find((d) => d.phase === "signal")!.summary).toContain("hold");
+  });
+});
+
+describe("orders still working at the broker count toward exposure", () => {
+  /**
+   * The failure this guards against, measured before the fix:
+   *
+   *   cycle 1  submit buy 10, broker acknowledges, nothing fills yet
+   *   cycle 2  a new bar arrives -> new decision -> NEW client order id
+   *            "all 14 risk checks passed"  -> submit buy 10 again
+   *   cycle 3  same again
+   *   result   3 orders, 30 units working, against a 10-unit intent
+   *
+   * The client-order-id guard cannot catch this. It stops the same decision
+   * being sent twice, and each new bar is a genuinely different decision. Both
+   * risk layers sized against FILLED positions, so a broker that had not filled
+   * yet looked exactly like a broker holding nothing.
+   */
+  const growingFeed = (barCount: () => number, clock: () => string): MarketFeed => ({
+    bars: async () => bars(barCount()),
+    quote: async () => ({ symbol: "TEST", bid: 99.99, ask: 100.01, at: clock() }),
+  });
+
+  it("does not re-enter while an unfilled order is live", async () => {
+    const gateway = createFakeGateway();
+    const orders = createInMemoryOrderStore();
+    let count = 60;
+    let nowIso = "2026-09-16T12:00:00.000Z";
+    const clock = () => nowIso;
+    const ctx = () =>
+      context({ gateway, orders, feed: growingFeed(() => count, clock), now: clock });
+
+    const first = await runCycle(ctx());
+    expect(first.orderSubmitted).toBe(true);
+
+    // A new bar, so a genuinely new decision and a different client order id.
+    count = 61;
+    nowIso = "2026-09-16T13:00:00.000Z";
+    const second = await runCycle(ctx());
+    expect(second.clientOrderId).not.toBe(first.clientOrderId);
+    expect(second.orderSubmitted).toBe(false);
+
+    count = 62;
+    nowIso = "2026-09-16T14:00:00.000Z";
+    const third = await runCycle(ctx());
+    expect(third.orderSubmitted).toBe(false);
+
+    const book = await orders.all();
+    const working = book
+      .filter((o) => !isTerminal(o.status))
+      .reduce((sum, o) => sum + (o.quantity - o.filledQuantity), 0);
+    expect(book).toHaveLength(1);
+    expect(working).toBe(first.clientOrderId ? (await orders.get(first.clientOrderId))!.quantity : 0);
+  });
+
+  it("still counts the residual after a partial fill", async () => {
+    const gateway = createFakeGateway();
+    const orders = createInMemoryOrderStore();
+    let count = 60;
+    let nowIso = "2026-09-16T12:00:00.000Z";
+    const clock = () => nowIso;
+    const ctx = () =>
+      context({ gateway, orders, feed: growingFeed(() => count, clock), now: clock });
+
+    const first = await runCycle(ctx());
+    const placed = (await orders.get(first.clientOrderId!))!;
+
+    // Half fills; the rest is still working.
+    const half = placed.quantity / 2;
+    gateway.fill(first.clientOrderId!, half, 100);
+    gateway.setPositions([{ symbol: "TEST", quantity: half, averagePrice: 100 }]);
+
+    count = 61;
+    nowIso = "2026-09-16T13:00:00.000Z";
+    const second = await runCycle(ctx());
+
+    // Filled half + working half = the full intent. Nothing more may be added.
+    expect(second.orderSubmitted).toBe(false);
+    expect(await orders.all()).toHaveLength(1);
+  });
+
+  it("reports working quantity on the reconciliation report", async () => {
+    const gateway = createFakeGateway();
+    const orders = createInMemoryOrderStore();
+    const clock = () => "2026-09-16T12:00:00.000Z";
+    const first = await runCycle(
+      context({ gateway, orders, feed: growingFeed(() => 60, clock), now: clock }),
+    );
+    const placed = (await orders.get(first.clientOrderId!))!;
+
+    const report = await reconcile({ gateway, store: orders, now: clock });
+    expect(report.workingQuantities).toEqual([{ symbol: "TEST", quantity: placed.quantity }]);
+  });
+
+  it("never blocks an exit — a working close moves exposure toward flat", async () => {
+    // A halt that can trap you in a losing position is worse than no halt, and
+    // the same must be true of an exposure guard. A working SELL is signed
+    // negative against a long, so it can only reduce the number.
+    const records = [
+      {
+        clientOrderId: "close-1",
+        symbol: "TEST",
+        side: "sell" as const,
+        quantity: 10,
+        intent: "close" as const,
+        stopPrice: null,
+        takeProfitPrice: null,
+        reason: "exit",
+        status: "submitted" as const,
+        brokerOrderId: "B1",
+        filledQuantity: 0,
+        averageFillPrice: null,
+        rejectReason: null,
+        createdAt: "2026-09-16T12:00:00.000Z",
+        updatedAt: "2026-09-16T12:00:00.000Z",
+        submitAttempts: 1,
+      },
+    ];
+    expect(deriveWorkingQuantities(records)).toEqual([{ symbol: "TEST", quantity: -10 }]);
   });
 });

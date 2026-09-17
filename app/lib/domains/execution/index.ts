@@ -26,7 +26,7 @@ export type { OrderStore } from "./order-store";
 export { submitOrder } from "./submit";
 export type { SubmitContext, SubmitResult } from "./submit";
 
-export { derivePositionsFromOrders, reconcile } from "./reconcile";
+export { derivePositionsFromOrders, deriveWorkingQuantities, reconcile } from "./reconcile";
 export type {
   Discrepancy,
   DiscrepancyKind,

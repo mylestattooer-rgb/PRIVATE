@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createFakeGateway } from "./fake-gateway";
 import { createInMemoryOrderStore } from "./order-store";
-import { derivePositionsFromOrders, reconcile } from "./reconcile";
+import { derivePositionsFromOrders, deriveWorkingQuantities, reconcile } from "./reconcile";
 import type { OrderRecord, OrderStatus } from "./types";
 
 const record = (overrides: Partial<OrderRecord> = {}): OrderRecord => ({
@@ -196,5 +196,99 @@ describe("reconcile", () => {
     // Crucially it does NOT report a missing position — it reports that it does
     // not know, which is a different and honest answer.
     expect(report.discrepancies).toEqual([]);
+  });
+});
+
+describe("deriveWorkingQuantities", () => {
+  const rec = (overrides: Partial<OrderRecord>): OrderRecord => ({
+    clientOrderId: "c1",
+    symbol: "TEST",
+    side: "buy",
+    quantity: 10,
+    intent: "open",
+    stopPrice: null,
+    takeProfitPrice: null,
+    reason: "test",
+    status: "submitted",
+    brokerOrderId: "b1",
+    filledQuantity: 0,
+    averageFillPrice: null,
+    rejectReason: null,
+    createdAt: "2026-09-16T12:00:00.000Z",
+    updatedAt: "2026-09-16T12:00:00.000Z",
+    submitAttempts: 1,
+    ...overrides,
+  });
+
+  it("counts the unfilled residual of a working order", () => {
+    expect(deriveWorkingQuantities([rec({ quantity: 10, filledQuantity: 0 })])).toEqual([
+      { symbol: "TEST", quantity: 10 },
+    ]);
+  });
+
+  it("counts only what is left on a partial fill", () => {
+    expect(
+      deriveWorkingQuantities([rec({ quantity: 10, filledQuantity: 4, status: "partially_filled" })]),
+    ).toEqual([{ symbol: "TEST", quantity: 6 }]);
+  });
+
+  it("ignores terminal orders, which have no residual", () => {
+    expect(
+      deriveWorkingQuantities([
+        rec({ clientOrderId: "a", status: "filled", filledQuantity: 10 }),
+        rec({ clientOrderId: "b", status: "rejected" }),
+        rec({ clientOrderId: "c", status: "cancelled" }),
+      ]),
+    ).toEqual([]);
+  });
+
+  it("counts an unresolved order — its fate is unknown, so assume the worst", () => {
+    expect(deriveWorkingQuantities([rec({ status: "unknown" })])).toEqual([
+      { symbol: "TEST", quantity: 10 },
+    ]);
+  });
+
+  it("signs a working sell negative, so a close moves exposure toward flat", () => {
+    // This is what stops the guard from ever blocking an exit.
+    expect(deriveWorkingQuantities([rec({ side: "sell", intent: "close" })])).toEqual([
+      { symbol: "TEST", quantity: -10 },
+    ]);
+  });
+
+  it("nets opposing working orders and drops the result when they cancel out", () => {
+    expect(
+      deriveWorkingQuantities([
+        rec({ clientOrderId: "a", side: "buy", quantity: 10 }),
+        rec({ clientOrderId: "b", side: "sell", quantity: 10 }),
+      ]),
+    ).toEqual([]);
+  });
+
+  it("sums several working orders on one symbol — the bug this exists to catch", () => {
+    // Three cycles, three full-size orders, none filled yet. Sized against
+    // filled positions alone this reads as flat.
+    expect(
+      deriveWorkingQuantities([
+        rec({ clientOrderId: "a" }),
+        rec({ clientOrderId: "b" }),
+        rec({ clientOrderId: "c" }),
+      ]),
+    ).toEqual([{ symbol: "TEST", quantity: 30 }]);
+  });
+
+  it("separates symbols and sorts them", () => {
+    expect(
+      deriveWorkingQuantities([
+        rec({ clientOrderId: "a", symbol: "ZZZ" }),
+        rec({ clientOrderId: "b", symbol: "AAA" }),
+      ]),
+    ).toEqual([
+      { symbol: "AAA", quantity: 10 },
+      { symbol: "ZZZ", quantity: 10 },
+    ]);
+  });
+
+  it("handles an empty book", () => {
+    expect(deriveWorkingQuantities([])).toEqual([]);
   });
 });

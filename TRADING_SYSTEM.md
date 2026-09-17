@@ -16,7 +16,7 @@ npm run study3        # hypothesis 3 (five-minute reversion after absorption)
 npm run unattended    # the live loop, driven through a failure gauntlet
 npm run import-mt5    # import your broker's own history + measured spread
 npm run intraday      # what a strategy must achieve to cover this broker's spread
-npm test              # 477 tests
+npm test              # 494 tests
 ```
 
 ## The four domains
@@ -41,9 +41,14 @@ These are enforced by types and tests, not by discipline.
 2. **No look-ahead, structurally.** A strategy sees a frozen slice of bars
    `0..i`; orders fill at bar `i+1`'s open. The general form is pinned by a
    test: *appending a future bar must not change any earlier return.*
-3. **No duplicate orders.** Client order ids hash the decision, not the send.
-   Resolution separates "the broker says no such order" from "the broker isn't
-   answering". Conflating those is the bug that doubles positions.
+3. **No duplicate orders**, and that needs two separate mechanisms. Client
+   order ids hash the decision, not the send, so the *same* decision can never
+   be sent twice; resolution separates "the broker says no such order" from
+   "the broker isn't answering", because conflating those is the bug that
+   doubles positions. That does nothing about a *second* decision made while
+   the first order is still working — each new bar is a genuinely new decision
+   with a new id — so **risk limits count working quantity as exposure**. Both
+   were needed; only the first was there.
 4. **Two independent risk layers.** The Risk Manager sizes; the preflight gate
    evaluates against limits it owns exclusively. No shared code or config.
 5. **Halts stop entries, never exits.** A gate that can trap you in a losing
@@ -251,7 +256,9 @@ before it.
   `portfolio.ts` so the next person does not rediscover it.
 - **No margin model.** Fine for cash instruments, wrong for leveraged CFDs.
 - **No partial fills or liquidity model in the simulator.** Every order fills in
-  full at one price.
+  full at one price. The *live* path does handle them: a partial fill's unfilled
+  residual counts toward exposure in both risk layers, so a slow fill cannot be
+  stacked on top of.
 - **Daily bars have no intrabar path**, so a bar containing both stop and target
   is resolved as the stop.
 - **Effective breadth was 5.4**, not 12. Seven USD-driven FX pairs are not seven
