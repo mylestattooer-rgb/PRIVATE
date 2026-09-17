@@ -67,7 +67,28 @@ export type RiskContext = {
    *  current bar's close, which is the last price a decision could legally
    *  have seen. Fills happen later, at a price this module never assumes. */
   referencePrice: number;
+  /**
+   * Positions the broker has actually given us. Filled only.
+   *
+   * This is what an exit consults, and it must never include an order that is
+   * merely working: a sell against an unfilled buy does not close anything, it
+   * opens a short.
+   */
   positions: Position[];
+  /**
+   * Exposure ordered but not yet filled, consulted only by the checks that
+   * decide whether to open MORE.
+   *
+   * Kept apart from `positions` rather than merged into it because the two
+   * answer different questions. An unfilled order is about to be a position, so
+   * a limit that ignores it can be breached by a broker simply being slow; but
+   * it is not a position, so it cannot be closed. Merging them got both halves
+   * of that wrong in turn.
+   *
+   * Optional, and absent in backtests: the simulator fills every order in full
+   * at one price, so nothing is ever working there.
+   */
+  working?: Position[];
   killSwitch: KillSwitchState;
   limits: RiskLimits;
   /** Caller-supplied so a backtest is reproducible; this module never
@@ -144,7 +165,12 @@ export function sizePosition(
 /** Turn a Signal into an Order, or explain why not. */
 export function assessSignal(signal: Signal, ctx: RiskContext): RiskDecision {
   const { limits, positions, killSwitch } = ctx;
+  // Filled only — what an exit is allowed to act on.
   const existing = findPosition(positions, signal.symbol);
+  // Filled plus working — what the "may I open more" checks below must see.
+  const working = ctx.working ?? [];
+  const committed = [...positions, ...working];
+  const committedHere = findPosition(committed, signal.symbol);
 
   if (signal.action === "hold") {
     return { approved: false, reason: "hold", detail: "signal proposed no action" };
@@ -175,21 +201,24 @@ export function assessSignal(signal: Signal, ctx: RiskContext): RiskDecision {
     };
   }
 
-  if (existing) {
+  if (committedHere) {
     // No averaging down, no pyramiding: both need rules this harness does not
     // have yet, and silently allowing them would understate real exposure.
+    // Working orders count here — otherwise a slow fill lets each new bar's
+    // decision stack another full-size order on top of the last.
+    const held = existing ? "holding" : "ordered but unfilled:";
     return {
       approved: false,
       reason: "already_in_position",
-      detail: `already holding ${existing.quantity} ${existing.side} in ${signal.symbol}`,
+      detail: `already ${held} ${committedHere.quantity} ${committedHere.side} in ${signal.symbol}`,
     };
   }
 
-  if (positions.length >= limits.maxOpenPositions) {
+  if (committed.length >= limits.maxOpenPositions) {
     return {
       approved: false,
       reason: "position_limit_reached",
-      detail: `${positions.length} open positions, limit is ${limits.maxOpenPositions}`,
+      detail: `${committed.length} open or working positions, limit is ${limits.maxOpenPositions}`,
     };
   }
 

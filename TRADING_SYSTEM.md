@@ -16,7 +16,7 @@ npm run study3        # hypothesis 3 (five-minute reversion after absorption)
 npm run unattended    # the live loop, driven through a failure gauntlet
 npm run import-mt5    # import your broker's own history + measured spread
 npm run intraday      # what a strategy must achieve to cover this broker's spread
-npm test              # 510 tests
+npm test              # 526 tests
 ```
 
 ## The four domains
@@ -49,19 +49,26 @@ These are enforced by types and tests, not by discipline.
    the first order is still working — each new bar is a genuinely new decision
    with a new id — so **risk limits count working quantity as exposure**. Both
    were needed; only the first was there.
-4. **Two independent risk layers.** The Risk Manager sizes; the preflight gate
+4. **"Held" and "working" are different things and are kept apart.** An order
+   the broker has acknowledged but not filled is about to be a position, so the
+   *may I open more* checks must count it. It is not a position, so an exit must
+   not: a sell against an unfilled buy closes nothing and opens a short.
+   Merging the two got each half wrong in turn. For the same reason working
+   orders are never netted against each other — the worst case for a long limit
+   is that a working close does *not* fill while a new entry does.
+5. **Two independent risk layers.** The Risk Manager sizes; the preflight gate
    evaluates against limits it owns exclusively. No shared code or config.
-5. **Halts stop entries, never exits.** A gate that can trap you in a losing
+6. **Halts stop entries, never exits.** A gate that can trap you in a losing
    position is worse than no gate.
-6. **Risk limits are outside the AI's reach.** The policy is frozen data and the
+7. **Risk limits are outside the AI's reach.** The policy is frozen data and the
    domain exports no setter. Asserted against the real module namespace.
-7. **Alerting fires on transitions, never on continuation.** A system halted at
+8. **Alerting fires on transitions, never on continuation.** A system halted at
    02:00 running a cycle a minute would otherwise page 480 times before anyone
    woke up; nobody reads the 480th, they mute the channel, and the mute outlives
    the incident. Recovery is announced too, or the operator has to go and look —
    which is the behaviour alerting exists to remove. An alerting outage can
    never become a trading outage: `neverThrows` swallows notifier failures.
-8. **Live mode is off.** `runBacktest` throws on any adapter declaring
+9. **Live mode is off.** `runBacktest` throws on any adapter declaring
    `isLive`; `runCycle` refuses a live gateway unless explicitly opted in, and
    nothing sets that opt-in. No venue adapter exists.
 

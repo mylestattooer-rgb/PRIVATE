@@ -214,3 +214,54 @@ describe("assessSignal", () => {
     expect(decision).toMatchObject({ approved: false, reason: "no_position_to_close" });
   });
 });
+
+describe("working orders are counted for entries but never for exits", () => {
+  // Default symbol, so it matches the default signal.
+  const workingLong = position({ side: "long", quantity: 10 });
+
+  it("blocks a new entry while an order is working but unfilled", () => {
+    // Without this, each new bar is a new decision with a new client order id,
+    // and three slow cycles stack three full-size orders on a one-position
+    // intent with every risk check passing.
+    const decision = assessSignal(signal({ action: "enter_long" }), context({ positions: [], working: [workingLong] }));
+    expect(decision.approved).toBe(false);
+    expect(decision.approved === false && decision.reason).toBe("already_in_position");
+    expect(decision.approved === false && decision.detail).toContain("unfilled");
+  });
+
+  it("refuses an exit against an order that has not filled", () => {
+    // A sell against an unfilled buy does not close anything — it opens a
+    // short. Only what the broker has actually given us can be closed.
+    const decision = assessSignal(signal({ action: "exit" }), context({ positions: [], working: [workingLong] }));
+    expect(decision.approved).toBe(false);
+    expect(decision.approved === false && decision.reason).toBe("no_position_to_close");
+  });
+
+  it("still exits a genuinely held position while another order works", () => {
+    const decision = assessSignal(
+      signal({ action: "exit" }),
+      context({ positions: [workingLong], working: [position({ symbol: "OTHER", side: "long", quantity: 5 })] }),
+    );
+    expect(decision.approved).toBe(true);
+    expect(decision.approved === true && decision.order.intent).toBe("close");
+  });
+
+  it("counts working orders toward maxOpenPositions", () => {
+    const decision = assessSignal(
+      signal({ symbol: "NEW", action: "enter_long" }),
+      context({
+        positions: [position({ symbol: "A", side: "long" })],
+        working: [position({ symbol: "B", side: "long" })],
+        limits: { ...DEFAULT_RISK_LIMITS, maxOpenPositions: 2 },
+      }),
+    );
+    expect(decision.approved).toBe(false);
+    expect(decision.approved === false && decision.reason).toBe("position_limit_reached");
+  });
+
+  it("behaves as before when nothing is working", () => {
+    // Backtests never pass `working`: the simulator fills in full at one price.
+    const decision = assessSignal(signal({ action: "enter_long" }), context({ positions: [] }));
+    expect(decision.approved).toBe(true);
+  });
+});

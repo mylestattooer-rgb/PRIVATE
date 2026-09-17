@@ -25,6 +25,7 @@ import {
   type RiskLimits,
 } from "../simulator/risk";
 import { preflight, type ActiveHalt, type ProposedOrder, type Quote, type RiskPolicy } from "../riskcontrol";
+import { worstCaseExposure } from "./exposure";
 import { deriveClientOrderId } from "../execution/client-order-id";
 import { reconcile } from "../execution/reconcile";
 import { submitOrder } from "../execution/submit";
@@ -245,49 +246,56 @@ export async function runCycle(ctx: LoopContext): Promise<CycleReport> {
 
   if (signal.action === "hold") return finish("strategy proposed no action");
 
-  // Exposure = what is filled PLUS what is still working at the broker.
+  // Exposure has two halves and they answer different questions.
   //
-  // Sizing against filled positions alone is how a slow fill turns one intended
-  // position into several. Each cycle brings a new bar, so each cycle is a
-  // genuinely new decision with a new client order id — the idempotency guard
-  // correctly lets it through, because it exists to stop the SAME decision
-  // being sent twice, not to stop a second decision. Measured before this was
-  // fixed: three cycles put three full-size orders on the book, 30 units
-  // against a 10-unit intent, with all fourteen risk checks passing every time.
+  //   filled   -> what an exit may act on. A sell against an unfilled buy does
+  //               not close anything; it opens a short.
+  //   working  -> what the "may I open more" limits must also count. Each new
+  //               bar is a new decision with a new client order id, so the
+  //               idempotency guard correctly lets it through; without counting
+  //               working quantity, three slow cycles put three full-size
+  //               orders on the book against a one-position intent, with every
+  //               risk check passing.
   //
-  // Treating working quantity as though it were filled is the worst case, and
-  // worst case is the only safe assumption for a limit. It cannot wrongly block
-  // an exit: a working close order is signed against the position it is
-  // closing, so it moves the exposure number toward flat, never away.
-  const exposure = new Map<string, { quantity: number; averagePrice: number }>();
-  for (const p of reconciliation.brokerPositions) {
-    if (p.quantity !== 0) exposure.set(p.symbol, { quantity: p.quantity, averagePrice: p.averagePrice });
-  }
-  for (const w of reconciliation.workingQuantities) {
-    const held = exposure.get(w.symbol);
-    // No fill yet means no average price from the broker; the decision bar's
-    // close is the honest estimate and is what sizing already used.
-    const price = held?.averagePrice ?? decisionBar.close;
-    exposure.set(w.symbol, { quantity: (held?.quantity ?? 0) + w.quantity, averagePrice: price });
-  }
-  const exposed = [...exposure.entries()]
-    .map(([symbol, v]) => ({ symbol, quantity: v.quantity, averagePrice: v.averagePrice }))
+  // They are kept apart rather than merged, because merging them got each half
+  // wrong in turn. See exposure.ts.
+  const filled: Position[] = reconciliation.brokerPositions
     .filter((p) => p.quantity !== 0)
-    .sort((a, b) => a.symbol.localeCompare(b.symbol));
+    .map((p) => ({
+      symbol: p.symbol,
+      side: p.quantity > 0 ? ("long" as const) : ("short" as const),
+      quantity: Math.abs(p.quantity),
+      avgEntryPrice: p.averagePrice,
+      stopPrice: null,
+      targetPrice: null,
+      openedAt: at,
+      riskPerUnit: null,
+    }));
 
-  // ---- layer 1: sizing and the simulator's own risk manager ----
-  // Layer 1 sees EVERY open position, not just this symbol's, or its
-  // maxOpenPositions limit could never fire.
-  const allPositions: Position[] = exposed.map((p) => ({
-    symbol: p.symbol,
-    side: p.quantity > 0 ? ("long" as const) : ("short" as const),
-    quantity: Math.abs(p.quantity),
-    avgEntryPrice: p.averagePrice,
+  const working: Position[] = reconciliation.workingQuantities.map((w) => ({
+    symbol: w.symbol,
+    side: w.quantity > 0 ? ("long" as const) : ("short" as const),
+    quantity: Math.abs(w.quantity),
+    avgEntryPrice:
+      reconciliation.brokerPositions.find((p) => p.symbol === w.symbol)?.averagePrice ?? decisionBar.close,
     stopPrice: null,
     targetPrice: null,
     openedAt: at,
     riskPerUnit: null,
   }));
+
+  // Layer 2 only ever asks the first question — preflight short-circuits a
+  // close to allowed before any check runs — so it takes the worst case, with
+  // working buys and working sells evaluated separately rather than netted.
+  const exposed = worstCaseExposure(
+    reconciliation.brokerPositions.map((p) => ({
+      symbol: p.symbol,
+      quantity: p.quantity,
+      averagePrice: p.averagePrice,
+    })),
+    reconciliation.workingQuantities,
+    decisionBar.close,
+  );
 
   // The daily-loss halt is EVALUATED, not rebuilt untripped each cycle. Passing
   // a fresh openTradingDay() here made maxDailyLossPct inert and left
@@ -306,7 +314,8 @@ export async function runCycle(ctx: LoopContext): Promise<CycleReport> {
     equity: equityNow,
     cash: equityNow,
     referencePrice: decisionBar.close,
-    positions: allPositions,
+    positions: filled,
+    working,
     killSwitch: dayState,
     limits,
     orderId: "pending",
@@ -339,11 +348,10 @@ export async function runCycle(ctx: LoopContext): Promise<CycleReport> {
       equity: equityNow,
       dayStartEquity: memory.dayStartEquity,
       peakEquity: memory.peakEquity,
-      // Same exposure the sizing layer saw: filled plus still working.
       positions: exposed.map((p) => ({
         symbol: p.symbol,
         quantity: p.quantity,
-        notional: Math.abs(p.quantity * p.averagePrice),
+        notional: Math.abs(p.quantity * p.price),
       })),
       quote,
       recentOrderTimes,
