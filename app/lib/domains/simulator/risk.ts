@@ -214,11 +214,16 @@ export function assessSignal(signal: Signal, ctx: RiskContext): RiskDecision {
     };
   }
 
-  if (committed.length >= limits.maxOpenPositions) {
+  // Distinct SYMBOLS, not array entries. A partially filled order puts the same
+  // symbol in both lists — filled 4, working 6 — and counting it twice refuses
+  // a genuinely new symbol while reporting a position count the operator cannot
+  // reconcile with what they hold.
+  const committedSymbols = new Set(committed.map((p) => p.symbol)).size;
+  if (committedSymbols >= limits.maxOpenPositions) {
     return {
       approved: false,
       reason: "position_limit_reached",
-      detail: `${committed.length} open or working positions, limit is ${limits.maxOpenPositions}`,
+      detail: `${committedSymbols} open or working position(s), limit is ${limits.maxOpenPositions}`,
     };
   }
 

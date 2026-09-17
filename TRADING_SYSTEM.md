@@ -16,7 +16,7 @@ npm run study3        # hypothesis 3 (five-minute reversion after absorption)
 npm run unattended    # the live loop, driven through a failure gauntlet
 npm run import-mt5    # import your broker's own history + measured spread
 npm run intraday      # what a strategy must achieve to cover this broker's spread
-npm test              # 526 tests
+npm test              # 528 tests
 ```
 
 ## The four domains

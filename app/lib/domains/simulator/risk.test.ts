@@ -265,3 +265,33 @@ describe("working orders are counted for entries but never for exits", () => {
     expect(decision.approved).toBe(true);
   });
 });
+
+describe("maxOpenPositions counts symbols, not list entries", () => {
+  it("does not count a partially filled symbol twice", () => {
+    // Filled 4 and working 6 on the same symbol is ONE position, not two.
+    // Counting entries refused a genuinely new symbol and reported a number
+    // the operator could not reconcile with what they held.
+    const decision = assessSignal(
+      signal({ symbol: "NEW", action: "enter_long" }),
+      context({
+        positions: [position({ symbol: "A", quantity: 4 })],
+        working: [position({ symbol: "A", quantity: 6 })],
+        limits: { ...DEFAULT_RISK_LIMITS, maxOpenPositions: 2 },
+      }),
+    );
+    expect(decision.approved).toBe(true);
+  });
+
+  it("still refuses once genuinely distinct symbols reach the limit", () => {
+    const decision = assessSignal(
+      signal({ symbol: "NEW", action: "enter_long" }),
+      context({
+        positions: [position({ symbol: "A" })],
+        working: [position({ symbol: "B" })],
+        limits: { ...DEFAULT_RISK_LIMITS, maxOpenPositions: 2 },
+      }),
+    );
+    expect(decision.approved).toBe(false);
+    expect(decision.approved === false && decision.detail).toContain("2 open or working");
+  });
+});
