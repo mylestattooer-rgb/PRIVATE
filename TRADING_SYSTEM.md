@@ -16,7 +16,7 @@ npm run study3        # hypothesis 3 (five-minute reversion after absorption)
 npm run unattended    # the live loop, driven through a failure gauntlet
 npm run import-mt5    # import your broker's own history + measured spread
 npm run intraday      # what a strategy must achieve to cover this broker's spread
-npm test              # 494 tests
+npm test              # 510 tests
 ```
 
 ## The four domains
@@ -26,7 +26,7 @@ npm test              # 494 tests
 | `simulator/` | Backtest engine. No look-ahead, costs including financing, metrics |
 | `execution/` | Idempotent submission, ambiguous-send resolution, restart reconciliation |
 | `riskcontrol/` | Independent preflight gate. Eleven limits, fails closed |
-| `trader/` | The unattended cycle, kill switch, decision log, dashboard |
+| `trader/` | The unattended cycle, kill switch, decision log, dashboard, alerting |
 | `research/` | Multi-instrument portfolio backtesting, statistics, MT5 import |
 
 ## Invariants
@@ -55,7 +55,13 @@ These are enforced by types and tests, not by discipline.
    position is worse than no gate.
 6. **Risk limits are outside the AI's reach.** The policy is frozen data and the
    domain exports no setter. Asserted against the real module namespace.
-7. **Live mode is off.** `runBacktest` throws on any adapter declaring
+7. **Alerting fires on transitions, never on continuation.** A system halted at
+   02:00 running a cycle a minute would otherwise page 480 times before anyone
+   woke up; nobody reads the 480th, they mute the channel, and the mute outlives
+   the incident. Recovery is announced too, or the operator has to go and look —
+   which is the behaviour alerting exists to remove. An alerting outage can
+   never become a trading outage: `neverThrows` swallows notifier failures.
+8. **Live mode is off.** `runBacktest` throws on any adapter declaring
    `isLive`; `runCycle` refuses a live gateway unless explicitly opted in, and
    nothing sets that opt-in. No venue adapter exists.
 

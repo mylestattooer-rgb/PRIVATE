@@ -34,6 +34,7 @@ import {
   type LoopContext,
   type MarketFeed,
 } from "../app/lib/domains/trader";
+import { alertsForCycle, createConsoleNotifier, diffAlerts, neverThrows } from "../app/lib/domains/trader";
 import type { Strategy } from "../app/lib/domains/simulator";
 import { holdSignal } from "../app/lib/domains/simulator";
 import type { Bar, Signal } from "../app/lib/domains/simulator";
@@ -127,12 +128,26 @@ async function main(): Promise<void> {
         : `no order — ${refusal ? refusal.summary : report.decisions[report.decisions.length - 1].summary}`;
     const open = await shared.orders.openOrders();
     console.log(`  ${verdict}`);
+
+    // Alerting runs on TRANSITIONS. A halted system running a cycle a minute
+    // would otherwise page 480 times before anyone woke up, and the 480th is
+    // read by nobody — they mute the channel, and the mute outlives the
+    // incident. Recovery is announced too, or the operator has to go and look.
+    const { send, keys } = diffAlerts(alertsForCycle(report), alertKeys, report.at);
+    alertKeys = keys;
+    for (const alert of send) await notifier.send(alert);
     if (process.env.DEBUG_UNATTENDED) {
       console.log(`      [open orders: ${open.length} | halts: ${report.halts.map((h) => h.reason).join(",") || "none"}]`);
     }
     outcomes.push(`${label}: ${verdict}`);
     return report;
   };
+
+  let alertKeys: string[] = [];
+  const notifier = neverThrows(
+    createConsoleNotifier((line) => console.log(`  >>> ALERT ${line}`)),
+    (error) => console.log(`  >>> alerting failed, trading continues: ${String(error)}`),
+  );
 
   step(1, "Normal operation");
   await cycle("normal");

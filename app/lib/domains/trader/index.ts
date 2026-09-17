@@ -12,3 +12,12 @@ export type { CycleReport, EquityMemory, EquityStore, LoopContext, MarketFeed } 
 
 export { renderDashboard } from "./dashboard";
 export type { DashboardModel } from "./dashboard";
+
+export {
+  alertsForCycle,
+  createConsoleNotifier,
+  createInMemoryNotifier,
+  diffAlerts,
+  neverThrows,
+} from "./alerts";
+export type { Alert, AlertSeverity, Notifier } from "./alerts";
