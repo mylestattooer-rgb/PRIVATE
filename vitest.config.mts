@@ -17,6 +17,10 @@ export default defineConfig({
     // globalSetup keeps that file's schema current.
     env: { DATABASE_URL: TEST_DATABASE_URL },
     globalSetup: ["./vitest.global-setup.ts"],
+    // Gives each parallel worker its own copy of the template database. See
+    // vitest.setup-worker.ts — sharing one SQLite file across workers failed
+    // about one run in six on write contention.
+    setupFiles: ["./vitest.setup-worker.ts"],
   },
   resolve: {
     alias: {

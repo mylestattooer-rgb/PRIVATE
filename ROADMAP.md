@@ -126,12 +126,30 @@ Prisma-backed test DB) — found and fixed a `findUniqueOrThrow`-on-untrusted-ID
 "Chart Lab" and "Test infrastructure" for detail. Only remaining gap: the AI seeing the actual chart
 image, left open as a product decision.
 
-## Phase 6 — Simulator: NOT STARTED
+## Phase 6 — Simulator: DETERMINISTIC CORE BUILT, not yet persisted or surfaced
 
 Historical data engine, replay, orders, risk metrics, scenario training. The most infrastructure-
 heavy phase (needs a real historical market-data source, per `ARCHITECTURE.md`'s note on keeping
-`SimulatorSession` provider-agnostic) — do not start this before Phases 1-5 are stable, since it's
-the single most expensive phase to build twice.
+`SimulatorSession` provider-agnostic) — deliberately not started until Phases 1-5 were stable,
+since it's the single most expensive phase to build twice.
+
+**Built 2026-09-16** — `app/lib/domains/simulator/`, the pure engine, 144 tests. Signal →
+Risk Manager → Execution Adapter → Portfolio → Metrics, with `AI_ARCHITECTURE.md`'s "AI can only
+produce a Signal" rule enforced in the type system (a `Signal` carries no quantity, so only
+`risk.ts` can size anything). No-look-ahead is structural: a strategy sees a frozen slice of bars
+`0..i` and orders execute at bar `i+1`'s open, with a test proving a strategy that tries to read
+tomorrow's bar gets nothing. Includes a latching daily-loss halt that blocks entries but never
+exits, a paper broker with slippage and commission, provider-agnostic `MarketDataSource`, an
+example SMA-crossover strategy, and `npm run backtest` for a runnable report. Closed trades match
+the journal domain's `StatTrade`, so win rate and average R come from the existing
+`computeJournalStats` rather than a second implementation. Full detail in
+`app/lib/domains/simulator/README.md`, including a candid list of what the fill model omits
+(no margin, no partial fills, no spread/swap, one symbol per run).
+
+**Not built**: `SimulatorSession`/`SimulatorTrade` persistence (`DATABASE.md` §2.6), any student
+UI, a `USE_SIMULATOR` entitlement, a real historical data provider, and a portfolio-level runner
+for multiple symbols. No live-broker adapter exists and none should land inside this app — see
+`PRODUCT_SPEC.md`'s permanent non-goal and the README's "Going live" section.
 
 ## Phase 7 — Prop-firm preparation: NOT STARTED
 

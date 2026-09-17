@@ -8,9 +8,16 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
+    "backtest": "tsx scripts/backtest.ts",
+    "evidence": "tsx scripts/evidence.ts",
+    "research": "tsx scripts/research.ts",
+    "import-mt5": "tsx scripts/import-mt5.ts",
+    "unattended": "tsx scripts/unattended.ts",
     "db:seed": "tsx prisma/seed.ts",
     "db:migrate": "prisma migrate dev",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "intraday": "tsx scripts/intraday.ts",
+    "study3": "tsx scripts/study3.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
