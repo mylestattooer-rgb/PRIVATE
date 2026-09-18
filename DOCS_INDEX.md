@@ -59,12 +59,21 @@ filter and colour by them in Obsidian's search and graph view:
 - `status/discovery` — Phase 0 thinking, nothing built from it yet
 - `status/proposal` — researched, explicitly **not** built or purchased
 
-## Referenced but never written
+## Referenced here, but living in the parent monorepo
 
-These filenames appear in older docs and do **not** exist. They are intentionally left as
-plain text rather than broken links:
+These filenames appear in the docs and are **intentionally not in this repository**. They are
+left as plain text rather than links because a link would necessarily break — the files are
+one directory up, in the private XAUUSD monorepo this project was extracted from:
 
 `AGENT_CONSTITUTION.md` · `AGENT_RD_SYSTEM_PROPOSAL.md` · `PROJECT_NOTES.md` · `RESEARCH_LOG.md`
+· `quant_platform/KNOWLEDGE_BASE.md` · `agents/`
+
+This is by design, not an oversight. Per [`PROJECT_STATE.md`](PROJECT_STATE.md) "Repo extraction"
+and "Methodology extraction", those files hold Meridian-7's live strategy parameters, real
+backtest P&L and account numbers. `trading_school/` was split out with `git subtree split`
+precisely so that material could never become reachable from this repository's remote.
+
+**They are therefore not backed up by this GitHub repo.** Pushing here does not push them.
 
 ## Not in the docs
 
