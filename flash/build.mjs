@@ -326,13 +326,13 @@ const page = `<!doctype html>
     outline:2px solid var(--ink); outline-offset:2px;
   }
   .chips{display:flex; flex-wrap:wrap; gap:8px}
+  #density{margin-left:auto}
   .chip{
     padding:8px 14px; font:inherit; font-size:13px; color:var(--ink); background:transparent;
     border:1px solid var(--line); border-radius:999px; cursor:pointer;
   }
   .chip[aria-pressed="true"]{background:var(--accent); color:var(--on-accent); border-color:var(--accent)}
-  .icon-btn{
-    margin-left:auto; padding:8px 14px; font:inherit; font-size:13px; color:var(--ink);
+  .icon-btn{ padding:8px 14px; font:inherit; font-size:13px; color:var(--ink);
     background:transparent; border:1px solid var(--line); border-radius:999px; cursor:pointer;
   }
 
@@ -362,6 +362,19 @@ const page = `<!doctype html>
   }
   .title{margin:4px 0 0; font-size:16px; font-weight:600; letter-spacing:-.01em}
   .size,.once{margin:4px 0 0; font-size:12.5px; color:var(--muted)}
+
+  /* Contact-sheet mode. Browsing a large archive is a different job from a
+     client picking a design: you want as many thumbnails on screen as stay
+     recognisable, so the cards shed their padding and text and keep the ref. */
+  :root[data-density="dense"] .grid{
+    grid-template-columns:repeat(auto-fill,minmax(104px,1fr)); gap:10px;
+  }
+  :root[data-density="dense"] .card{padding:7px}
+  :root[data-density="dense"] .frame{margin-bottom:5px; padding:5px; border-radius:6px}
+  :root[data-density="dense"] .title,
+  :root[data-density="dense"] .size,
+  :root[data-density="dense"] .once{display:none}
+  :root[data-density="dense"] .meta .ref{font-size:10px; letter-spacing:.06em}
 
   .empty{
     grid-column:1/-1; padding:64px 24px; text-align:center; border:1px dashed var(--line);
@@ -440,6 +453,7 @@ const page = `<!doctype html>
   <div class="wrap controls-inner">
     <input id="search" class="search" type="search" placeholder="Search designs, references or tags" aria-label="Search designs">
     ${allTags.length ? `<div class="chips" id="chips">${tagChips}</div>` : ''}
+    <button id="density" class="icon-btn" type="button" aria-label="Switch between large and compact thumbnails">Compact</button>
     <button id="theme" class="icon-btn" type="button" aria-label="Switch between light and dark">Dark</button>
   </div>
 </div>
@@ -505,6 +519,22 @@ ${designs.length ? cards : emptyState}
     root.setAttribute('data-theme', next);
     label();
     try { localStorage.setItem('flash-theme', next); } catch (e) {}
+  });
+
+  /* ---- density: remembered per visitor, same as the theme ---- */
+  var densityBtn = document.getElementById('density');
+  function labelDensity() {
+    densityBtn.textContent = root.getAttribute('data-density') === 'dense' ? 'Large' : 'Compact';
+  }
+  try {
+    if (localStorage.getItem('flash-density') === 'dense') root.setAttribute('data-density', 'dense');
+  } catch (e) {}
+  labelDensity();
+  densityBtn.addEventListener('click', function () {
+    var dense = root.getAttribute('data-density') === 'dense';
+    if (dense) root.removeAttribute('data-density'); else root.setAttribute('data-density', 'dense');
+    labelDensity();
+    try { localStorage.setItem('flash-density', dense ? 'large' : 'dense'); } catch (e) {}
   });
 
   /* ---- filtering ---- */

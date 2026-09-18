@@ -8,14 +8,27 @@ Nothing to install — no dependencies, no build tools, no framework. Just Node.
 
 ## Everyday use
 
-1. Put your artwork in `flash/designs/` — `.svg`, `.png`, `.jpg` or `.webp`.
-2. Run the build:
+Put your artwork in `flash/designs/` — `.svg`, `.png`, `.jpg` or `.webp` — then
+**double-click `View Catalogue.command`** (macOS) or `View-Catalogue.bat` (Windows).
+It rebuilds the catalogue and opens it in your browser. No terminal.
 
-   ```bash
-   node flash/build.mjs
-   ```
+The first time on macOS, Gatekeeper will refuse a downloaded script: right-click the file,
+choose **Open**, then **Open** again. It won't ask after that.
 
-3. Open `flash/index.html` in a browser.
+Prefer the terminal? It's the same thing:
+
+```bash
+node flash/build.mjs && open flash/index.html
+```
+
+## Browsing a big archive
+
+The **Compact** button at the top switches to a contact sheet — around five times as many
+designs per screen, references still under each one. Use it to scan a large collection;
+switch back to **Large** when showing a client. Your choice is remembered.
+
+Combine it with the search box and tag filters to find something fast: typing a reference,
+a tag or part of a title narrows the sheet as you type.
 
 Every new file is automatically given the next reference number (`BW-001`, `BW-002`, …)
 and an entry in `designs.json`. Fill in the title, tags, size and placement there, then
