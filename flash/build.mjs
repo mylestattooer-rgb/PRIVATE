@@ -706,26 +706,67 @@ const _byWidth = (_pg[0] - 24 - (sheetCols - 1) * 3) / sheetCols
  * constraint, so the cell has to be the smaller of the two.
  */
 const sheetRows = Number(config.sheetRows) || 0
+const _CAP = 4
+const _ROWGAP = 4
+// Height available for the grid once a minimum page margin is reserved.
 const _byHeight = sheetRows
-  ? (_pg[1] - 24 - 14) / sheetRows - 7.5
+  ? (_pg[1] - 24 - (sheetRows - 1) * _ROWGAP) / sheetRows - _CAP
   : Infinity
-const sheetCellMm = Math.min(_byWidth, _byHeight)
+// A hair under the limit: at exactly the limit, sub-pixel rounding in the print
+// engine tips the last row onto the next page and every sheet loses a row.
+const sheetCellMm = Math.min(_byWidth, _byHeight) - 0.4
 const sheetRowsPerPage = sheetRows || Math.max(1, Math.floor((_pg[1] - 24 - 14) / (sheetCellMm + 7.5)))
 
-const sheetCells = designs
-  .map((d) => {
-    const art =
-      extname(d.file).toLowerCase() === '.svg'
-        ? prepareSvg(readFileSync(join(DESIGNS_DIR, d.file), 'utf8'), `s-${d.slug}`)
-        : `<img class="art" src="designs/${encodeURIComponent(d.file)}" alt="${esc(d.title)}">`
-    if (!art) return ''
-    return `    <figure class="cell">
-      <div class="plate">${art}</div>
-      <figcaption>${esc(d.ref)}</figcaption>
-    </figure>`
-  })
-  .filter(Boolean)
-  .join('\n')
+/**
+ * With no header, each page holds the same grid block, so the page margins can
+ * be derived from the block's size and the sheet centres itself exactly rather
+ * than being nudged by hand. The caption is given a fixed height so the row
+ * height is a known quantity rather than whatever the font happens to render.
+ */
+const CAP_MM = _CAP
+const ROWGAP_MM = _ROWGAP
+const COLGAP_MM = 3
+const _contentH =
+  sheetRowsPerPage * (sheetCellMm + CAP_MM) + (sheetRowsPerPage - 1) * ROWGAP_MM
+const _contentW = sheetCols * sheetCellMm + (sheetCols - 1) * COLGAP_MM
+// 1mm off dead-centre, so the printable area is 2mm taller than the grid block.
+// Imperceptible on the page, and the difference between 12 a page and 9.
+const sheetMarginV = Math.max(5, (_pg[1] - _contentH) / 2 - 1)
+const sheetMarginH = Math.max(5, (_pg[0] - _contentW) / 2)
+
+const _cellHtml = (d) => {
+  const art =
+    extname(d.file).toLowerCase() === '.svg'
+      ? prepareSvg(readFileSync(join(DESIGNS_DIR, d.file), 'utf8'), `s-${d.slug}`)
+      : `<img class="art" src="designs/${encodeURIComponent(d.file)}" alt="${esc(d.title)}">`
+  if (!art) return ''
+  return `      <figure class="cell">
+        <div class="plate">${art}</div>
+        <figcaption>${esc(d.ref)}</figcaption>
+      </figure>`
+}
+
+/**
+ * Let a single grid flow across pages and the rows break wherever they land:
+ * each page starts a little lower than the last, and eventually a page holds
+ * one row fewer. Measured drift was 14.4mm, 16.3mm, 18.1mm down successive
+ * pages, with 12 designs on some sheets and 9 on others.
+ *
+ * Chunking into one grid per page and breaking explicitly after each makes
+ * every sheet identical and independent of what came before.
+ */
+const _perPage = sheetCols * sheetRowsPerPage
+const sheetCells = Array.from(
+  { length: Math.ceil(designs.length / _perPage) },
+  (_, i) => {
+    const cells = designs
+      .slice(i * _perPage, (i + 1) * _perPage)
+      .map(_cellHtml)
+      .filter(Boolean)
+      .join('\n')
+    return `  <section class="sheet-page">\n    <div class="sheet">\n${cells}\n    </div>\n  </section>`
+  }
+).join('\n')
 
 const sheetPage = `<!doctype html>
 <html lang="en">
@@ -734,19 +775,23 @@ const sheetPage = `<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(config.artist)} — Flash Sheets</title>
 <style>
-  @page{ size:${esc(config.sheetPageSize || 'A3')} portrait; margin:12mm; }
+  @page{
+    size:${esc(config.sheetPageSize || 'A3')} portrait;
+    margin:${sheetMarginV.toFixed(2)}mm ${sheetMarginH.toFixed(2)}mm;
+  }
   *{box-sizing:border-box}
   body{
-    margin:0; padding:12mm; background:#fff; color:#111;
+    margin:0; padding:10mm; background:#fff; color:#111;
     font:12px/1.4 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;
   }
-  header{ margin:0 0 8mm; padding-bottom:4mm; border-bottom:1.5px solid #111; }
-  h1{ margin:0; font-size:22px; letter-spacing:-.02em }
-  .sub{ margin:4px 0 0; font-size:11px; color:#555 }
+  .sheet-page{ break-after:page; page-break-after:always }
+  .sheet-page:last-child{ break-after:auto; page-break-after:auto }
   .sheet{
     display:grid; grid-template-columns:repeat(${sheetCols}, ${sheetCellMm.toFixed(2)}mm);
-    gap:4mm 3mm; justify-content:center;
+    grid-auto-rows:${(sheetCellMm + CAP_MM).toFixed(2)}mm;
+    gap:${ROWGAP_MM}mm ${COLGAP_MM}mm; justify-content:center; align-content:start;
   }
+  @media screen{ .sheet-page + .sheet-page{ margin-top:14mm; padding-top:14mm; border-top:1px dashed #ccc } }
   .cell{ margin:0; break-inside:avoid; page-break-inside:avoid; text-align:center }
   .plate{
     display:grid; place-items:center; aspect-ratio:1; padding:1.2mm;
@@ -754,7 +799,8 @@ const sheetPage = `<!doctype html>
   }
   .art{ width:100%; height:100%; object-fit:contain; min-width:0; min-height:0; color:#111 }
   figcaption{
-    margin-top:1mm; font-size:6.5pt; letter-spacing:.02em; color:#555;
+    height:${CAP_MM}mm; line-height:${CAP_MM}mm; margin:0;
+    font-size:6.5pt; letter-spacing:.02em; color:#555;
     font-variant-numeric:tabular-nums;
   }
   .hint{
@@ -770,16 +816,12 @@ const sheetPage = `<!doctype html>
 </style>
 </head>
 <body>
-  <header>
-    <h1>${esc(config.artist)} — Flash</h1>
-    <p class="sub">${designs.length} design${designs.length === 1 ? '' : 's'} · quote the reference beneath a design to book it</p>
-  </header>
   <div class="hint">
     <button type="button" class="printbtn" onclick="window.print()">Print all ${designs.length} designs</button>
     <span>Set your printer to <strong>${esc(config.sheetPageSize || 'A3')}</strong> and scale to <strong>100%</strong>.
     ${designs.length} designs over ${Math.ceil(designs.length / (sheetCols * sheetRowsPerPage))} pages. This box does not print.</span>
   </div>
-  <main class="sheet">
+  <main>
 ${sheetCells}
   </main>
 </body>
