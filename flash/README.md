@@ -99,6 +99,20 @@ each design physically smaller on the page.
 `sheets.html` is large (around 19MB, since every design is embedded) and is rebuilt on
 demand, so it is deliberately not committed to git.
 
+## Testing the print size first
+
+The build also writes `flash/test-sheet.html`: a single A4 page for checking the printed
+size before committing ink to the whole book.
+
+The designs on it are at their **true size** — the same millimetres they print at on the full
+sheets — so fewer of them fit on the smaller paper. That is the point: it is a true-size
+slice, not a shrunken copy of a full sheet, which would tell you nothing about how big a
+design actually comes out.
+
+Print it at **100% / Actual size**, with "Fit to page" or "Scale to fit" turned **off**.
+A 100mm ruler is printed at the top: measure it. If it reads 100mm, every design on the
+full sheets will come out at the right size too.
+
 ## Printing the browsable catalogue instead
 
 Open the page and print it (⌘P / Ctrl+P), then "Save as PDF". The print stylesheet drops

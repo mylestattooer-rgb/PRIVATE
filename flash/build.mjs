@@ -763,12 +763,108 @@ ${sheetCells}
 
 writeFileSync(SHEET_PATH, sheetPage)
 
+/* ------------------------------------------------------------- test sheet */
+
+/**
+ * A single A4 page for checking the printed size before committing to the whole
+ * book. The designs are laid out at exactly the size the configured full-size
+ * sheet produces — fewer fit on the smaller paper, which is the point: it is a
+ * true-size slice, not a shrunken copy. A ruler is printed alongside so the
+ * scale can be confirmed, since printers silently apply "fit to page" by default.
+ */
+const TEST_PATH = join(HERE, 'test-sheet.html')
+const PAGE_MM = { A4: [210, 297], A3: [297, 420], A2: [420, 594] }
+const MARGIN_MM = 12
+const GAP_MM = 3
+
+const [fullW] = PAGE_MM[config.sheetPageSize] || PAGE_MM.A3
+const cellMm = (fullW - 2 * MARGIN_MM - (sheetCols - 1) * GAP_MM) / sheetCols
+
+const [a4W, a4H] = PAGE_MM.A4
+const testCols = Math.max(1, Math.floor((a4W - 2 * MARGIN_MM + GAP_MM) / (cellMm + GAP_MM)))
+const testRows = Math.max(1, Math.floor((a4H - 2 * MARGIN_MM - 38) / (cellMm + 7.5)))
+const testCount = testCols * testRows
+
+const testCells = designs
+  .slice(0, testCount)
+  .map((d) => {
+    const art =
+      extname(d.file).toLowerCase() === '.svg'
+        ? prepareSvg(readFileSync(join(DESIGNS_DIR, d.file), 'utf8'), `t-${d.slug}`)
+        : `<img class="art" src="designs/${encodeURIComponent(d.file)}" alt="${esc(d.title)}">`
+    return art
+      ? `    <figure class="cell"><div class="plate">${art}</div><figcaption>${esc(d.ref)}</figcaption></figure>`
+      : ''
+  })
+  .filter(Boolean)
+  .join('\n')
+
+const testPage = `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${esc(config.artist)} — Print Test Sheet</title>
+<style>
+  @page{ size:A4 portrait; margin:${MARGIN_MM}mm; }
+  *{box-sizing:border-box}
+  body{
+    margin:0; padding:${MARGIN_MM}mm; background:#fff; color:#111;
+    font:12px/1.45 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;
+  }
+  h1{ margin:0 0 1mm; font-size:15px; letter-spacing:-.01em }
+  .note{ margin:0 0 3mm; font-size:10px; color:#555 }
+  .ruler{ margin:0 0 5mm }
+  .bar{
+    position:relative; width:100mm; height:7mm;
+    border:.5pt solid #111; border-top:none;
+  }
+  .bar span{ position:absolute; top:0; width:.5pt; height:2.6mm; background:#111 }
+  .bar span.major{ height:4.4mm }
+  .bar b{ position:absolute; top:4.6mm; font-size:6.5pt; font-weight:400; transform:translateX(-50%) }
+  .ruler p{ margin:1.5mm 0 0; font-size:9.5px; color:#111 }
+  .sheet{ display:grid; grid-template-columns:repeat(${testCols}, ${cellMm.toFixed(2)}mm); gap:4mm ${GAP_MM}mm; }
+  .cell{ margin:0; break-inside:avoid }
+  .plate{
+    display:grid; place-items:center; width:${cellMm.toFixed(2)}mm; height:${cellMm.toFixed(2)}mm;
+    padding:1.2mm; border:.3pt solid #e0e0e0; border-radius:1.2mm; background:#fff;
+  }
+  .art{ width:100%; height:100%; object-fit:contain; min-width:0; min-height:0; color:#111 }
+  figcaption{ margin-top:1mm; font-size:6.5pt; color:#555; text-align:center; font-variant-numeric:tabular-nums }
+  .hint{ margin:0 0 4mm; padding:2.5mm 3mm; border:.4pt dashed #bbb; border-radius:2mm; font-size:11px; color:#444 }
+  @media print{ .hint{display:none} body{padding:0} }
+</style>
+</head>
+<body>
+  <p class="hint">Print this at <strong>100% / Actual size</strong> — turn OFF “Fit to page” or “Scale to fit”, or the ruler and the designs will both come out wrong. This box does not print.</p>
+  <h1>Print test — ${esc(config.artist)} flash</h1>
+  <p class="note">Designs below are at their true ${cellMm.toFixed(0)}mm size, exactly as they print on the full ${esc(config.sheetPageSize || 'A3')} sheets (${sheetCols} per row). Only fewer fit on A4.</p>
+  <div class="ruler">
+    <div class="bar">
+${Array.from({ length: 11 }, (_, i) =>
+  `      <span class="major" style="left:${i * 10}mm"></span><b style="left:${i * 10}mm">${i * 10}</b>`
+).join('\n')}
+${Array.from({ length: 100 }, (_, i) => (i % 10 ? `      <span style="left:${i}mm"></span>` : '')).filter(Boolean).join('\n')}
+    </div>
+    <p>Check this bar measures <strong>100&nbsp;mm</strong> with a ruler. If it does, every design on the full sheets will print at the right size.</p>
+  </div>
+  <main class="sheet">
+${testCells}
+  </main>
+</body>
+</html>
+`
+
+writeFileSync(TEST_PATH, testPage)
+
+
 
 /* ------------------------------------------------------------------ report */
 
 console.log('')
 console.log(`  Flash catalogue built → ${OUT_PATH.replace(HERE, 'flash')}`)
 console.log(`  Printable sheets     → ${SHEET_PATH.replace(HERE, 'flash')} (${sheetCols} per row, ${config.sheetPageSize || 'A3'})`)
+console.log(`  A4 print test        → ${TEST_PATH.replace(HERE, 'flash')} (${testCount} designs at true ${cellMm.toFixed(0)}mm)`)
 console.log(`  ${designs.length} design${designs.length === 1 ? '' : 's'} on the page` +
   (added ? `, ${added} new` : '') + (retired ? `, ${retired} retired` : ''))
 if (added) console.log(`  New designs were given references in designs.json — add titles and tags there.`)

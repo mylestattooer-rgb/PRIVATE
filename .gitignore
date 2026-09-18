@@ -49,3 +49,4 @@ next-env.d.ts
 
 # Generated flash sheets — ~19MB, rebuilt by flash/build.mjs on demand
 /flash/sheets.html
+/flash/test-sheet.html
