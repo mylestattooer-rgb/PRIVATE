@@ -42,6 +42,12 @@ root as a vault and this note is your front door.
 | [`CURRICULUM_SYSTEM.md`](CURRICULUM_SYSTEM.md) | Lesson versioning, prerequisites, concepts | built |
 | [`HEYGEN_CONTENT_PIPELINE.md`](HEYGEN_CONTENT_PIPELINE.md) | Avatar video pipeline feasibility | proposal |
 
+## Unrelated tools living in this repo
+
+| Doc | What it answers | Status |
+| --- | --- | --- |
+| [`flash/README.md`](flash/README.md) | Tattoo flash catalogue and printable flash book. Self-contained, no dependencies, touches nothing in `app/` | built |
+
 ## Agent instructions
 
 | Doc | What it answers | Status |
