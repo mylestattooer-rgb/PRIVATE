@@ -1,10 +1,12 @@
 {
   "artist": "Myles",
-  "tagline": "Blackwork flash — available designs",
+  "tagline": "Blackwork flash \u2014 available designs",
   "location": "",
   "email": "mylestattooer@gmail.com",
   "instagram": "",
   "refPrefix": "BW",
   "intro": "Each piece below is available to tattoo. Designs are drawn once and tattooed once unless marked repeatable. Tap any design for details, then send me its reference number.",
-  "footnote": "Deposits are non-refundable and come off the final price."
+  "footnote": "Deposits are non-refundable and come off the final price.",
+  "sheetPageSize": "A3",
+  "sheetColumns": 12
 }

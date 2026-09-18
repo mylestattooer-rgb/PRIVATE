@@ -73,7 +73,33 @@ The email address there is used for the "Enquire" button, so it ends up visible 
 you send the catalogue to — swap it for a booking address if you'd rather not publish your
 personal one. Leave `email` or `instagram` empty and that button simply won't appear.
 
-## Making it a printed book
+## Making a flash book
+
+Running the build also writes `flash/sheets.html` — the printable counterpart. Open it and
+print (⌘P / Ctrl+P), choose **Save as PDF**, and you get every design laid out across a
+handful of pages with its reference underneath: a flash book for the counter, or sheets to
+pin up.
+
+At the default 12 per row on A3, 2,122 designs come to 13 pages. Two settings in
+`config.json` control it:
+
+```json
+"sheetPageSize": "A3",
+"sheetColumns": 12
+```
+
+Fewer columns means bigger designs and more pages — 8 per row gives 30 pages. Set
+`sheetPageSize` to `"A4"` for a smaller book.
+
+**Resolution is not a concern.** The sheets embed your vectors as vectors — the generated
+PDF contains no raster images at all — so the designs stay perfectly sharp however large
+they're printed or blown up. Packing more onto a sheet never costs sharpness; it only makes
+each design physically smaller on the page.
+
+`sheets.html` is large (around 19MB, since every design is embedded) and is rebuilt on
+demand, so it is deliberately not committed to git.
+
+## Printing the browsable catalogue instead
 
 Open the page and print it (⌘P / Ctrl+P), then "Save as PDF". The print stylesheet drops
 the search bar, buttons and colours, and lays the designs out three to a row with no design

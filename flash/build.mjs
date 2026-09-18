@@ -30,6 +30,8 @@ const DEFAULT_CONFIG = {
   instagram: '',
   refPrefix: 'BW',
   inlineLimit: 120,
+  sheetPageSize: 'A3',
+  sheetColumns: 8,
   intro:
     'Each piece below is available to tattoo. Designs are drawn once and tattooed once unless noted as repeatable. Tap any design for details, then send me its reference number.',
   footnote: 'Deposits are non-refundable and come off the final price.',
@@ -680,10 +682,93 @@ ${designs.length ? cards : emptyState}
 
 writeFileSync(OUT_PATH, page)
 
+/* ----------------------------------------------------------- flash sheets */
+
+/**
+ * The printable counterpart: dense grids of designs with their reference under
+ * each, sized for the studio wall or a folder on the counter rather than a
+ * phone. Print this file to PDF and every design in the catalogue comes out
+ * across however many pages it takes.
+ *
+ * Designs are always embedded here regardless of `inlineLimit` — a print job
+ * that silently drops half its artwork because a lazy image had not loaded is
+ * worse than a large file.
+ */
+const SHEET_PATH = join(HERE, 'sheets.html')
+const sheetCols = Math.max(2, Number(config.sheetColumns) || 8)
+
+const sheetCells = designs
+  .map((d) => {
+    const art =
+      extname(d.file).toLowerCase() === '.svg'
+        ? prepareSvg(readFileSync(join(DESIGNS_DIR, d.file), 'utf8'), `s-${d.slug}`)
+        : `<img class="art" src="designs/${encodeURIComponent(d.file)}" alt="${esc(d.title)}">`
+    if (!art) return ''
+    return `    <figure class="cell">
+      <div class="plate">${art}</div>
+      <figcaption>${esc(d.ref)}</figcaption>
+    </figure>`
+  })
+  .filter(Boolean)
+  .join('\n')
+
+const sheetPage = `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${esc(config.artist)} — Flash Sheets</title>
+<style>
+  @page{ size:${esc(config.sheetPageSize || 'A3')} portrait; margin:12mm; }
+  *{box-sizing:border-box}
+  body{
+    margin:0; padding:12mm; background:#fff; color:#111;
+    font:12px/1.4 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;
+  }
+  header{ margin:0 0 8mm; padding-bottom:4mm; border-bottom:1.5px solid #111; }
+  h1{ margin:0; font-size:22px; letter-spacing:-.02em }
+  .sub{ margin:4px 0 0; font-size:11px; color:#555 }
+  .sheet{
+    display:grid; grid-template-columns:repeat(${sheetCols}, 1fr); gap:4mm 3mm;
+  }
+  .cell{ margin:0; break-inside:avoid; page-break-inside:avoid; text-align:center }
+  .plate{
+    display:grid; place-items:center; aspect-ratio:1; padding:1.2mm;
+    border:.3pt solid #e0e0e0; border-radius:1.2mm; background:#fff;
+  }
+  .art{ width:100%; height:100%; object-fit:contain; min-width:0; min-height:0; color:#111 }
+  figcaption{
+    margin-top:1mm; font-size:6.5pt; letter-spacing:.02em; color:#555;
+    font-variant-numeric:tabular-nums;
+  }
+  .hint{
+    margin:0 0 6mm; padding:3mm 4mm; border:.4pt dashed #bbb; border-radius:2mm;
+    font-size:11px; color:#444;
+  }
+  @media print{ .hint{display:none} body{padding:0} }
+</style>
+</head>
+<body>
+  <header>
+    <h1>${esc(config.artist)} — Flash</h1>
+    <p class="sub">${designs.length} design${designs.length === 1 ? '' : 's'} · quote the reference beneath a design to book it</p>
+  </header>
+  <p class="hint">Print this page (⌘P / Ctrl+P) and choose “Save as PDF” for a flash book, or print it to pin up. Set your printer to ${esc(config.sheetPageSize || 'A3')} and enable background graphics. This box does not print.</p>
+  <main class="sheet">
+${sheetCells}
+  </main>
+</body>
+</html>
+`
+
+writeFileSync(SHEET_PATH, sheetPage)
+
+
 /* ------------------------------------------------------------------ report */
 
 console.log('')
 console.log(`  Flash catalogue built → ${OUT_PATH.replace(HERE, 'flash')}`)
+console.log(`  Printable sheets     → ${SHEET_PATH.replace(HERE, 'flash')} (${sheetCols} per row, ${config.sheetPageSize || 'A3'})`)
 console.log(`  ${designs.length} design${designs.length === 1 ? '' : 's'} on the page` +
   (added ? `, ${added} new` : '') + (retired ? `, ${retired} retired` : ''))
 if (added) console.log(`  New designs were given references in designs.json — add titles and tags there.`)

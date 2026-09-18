@@ -46,3 +46,6 @@ next-env.d.ts
 /prisma/test.db
 *.db-journal
 
+
+# Generated flash sheets — ~19MB, rebuilt by flash/build.mjs on demand
+/flash/sheets.html
