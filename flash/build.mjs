@@ -833,7 +833,6 @@ const PAGE_MM = { A4: [210, 297], A3: [297, 420], A2: [420, 594] }
 const MARGIN_MM = 12
 const GAP_MM = 3
 
-const [fullW] = PAGE_MM[config.sheetPageSize] || PAGE_MM.A3
 const cellMm = sheetCellMm
 
 const [a4W, a4H] = PAGE_MM.A4
