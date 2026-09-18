@@ -1,0 +1,80 @@
+{
+  "bw-001-crescent-and-dagger.svg": {
+    "ref": "BW-001",
+    "title": "Crescent & Dagger",
+    "tags": [
+      "ornamental",
+      "occult"
+    ],
+    "size": "10–14 cm",
+    "placement": "Forearm, outer thigh",
+    "notes": "Blade can be swapped for a key or a feather without redrawing the crescent.",
+    "repeatable": false,
+    "hidden": false
+  },
+  "bw-002-deaths-head-moth.svg": {
+    "ref": "BW-002",
+    "title": "Death's-Head Moth",
+    "tags": [
+      "nature",
+      "occult"
+    ],
+    "size": "12–16 cm",
+    "placement": "Sternum, back of arm",
+    "notes": "Symmetrical — sits best centred on the body.",
+    "repeatable": false,
+    "hidden": false
+  },
+  "bw-003-coiled-serpent.svg": {
+    "ref": "BW-003",
+    "title": "Coiled Serpent",
+    "tags": [
+      "nature",
+      "bold"
+    ],
+    "size": "9–15 cm",
+    "placement": "Knee, elbow, shoulder cap",
+    "notes": "The coil scales well — good over a joint.",
+    "repeatable": true,
+    "hidden": false
+  },
+  "bw-004-ornamental-band.svg": {
+    "ref": "BW-004",
+    "title": "Ornamental Band",
+    "tags": [
+      "ornamental",
+      "geometric"
+    ],
+    "size": "Wraps — measured on the day",
+    "placement": "Bicep, forearm, thigh, ankle",
+    "notes": "Repeat length is adjusted to your limb so the pattern meets cleanly.",
+    "repeatable": true,
+    "hidden": false
+  },
+  "bw-005-dotwork-sun.svg": {
+    "ref": "BW-005",
+    "title": "Dotwork Sun",
+    "tags": [
+      "dotwork",
+      "geometric"
+    ],
+    "size": "8–13 cm",
+    "placement": "Sternum, spine, back of arm",
+    "notes": "Dotwork fade — needs a longer sitting than it looks.",
+    "repeatable": true,
+    "hidden": false
+  },
+  "bw-006-geometric-mandala.svg": {
+    "ref": "BW-006",
+    "title": "Geometric Mandala",
+    "tags": [
+      "ornamental",
+      "geometric"
+    ],
+    "size": "10–18 cm",
+    "placement": "Shoulder, spine, outer thigh",
+    "notes": "Scales up well — the larger it goes, the more detail I can add.",
+    "repeatable": true,
+    "hidden": false
+  }
+}
