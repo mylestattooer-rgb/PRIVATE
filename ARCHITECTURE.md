@@ -1,15 +1,23 @@
+---
+title: Architecture — System Design
+doc_type: architecture
+status: mixed
+updated: 2026-08-10
+tags: [doc/architecture, status/mixed]
+---
+
 # ARCHITECTURE — Trading X
 
 Status: mixed — written during Phase 0 (discovery) as a target architecture; the "Auth" and
 "entitlements" sections below were then partially built in the same session (Phase 1's first
-milestone) and are marked DONE where implemented. See `PROJECT_STATE.md` for verified current
-build status and `SECURITY.md` for a real bug found and fixed while building this.
+milestone) and are marked DONE where implemented. See [`PROJECT_STATE.md`](PROJECT_STATE.md) for verified current
+build status and [`SECURITY.md`](SECURITY.md) for a real bug found and fixed while building this.
 
 ## Decision: keep the existing stack
 
 Next.js 16 (App Router, Server Actions) + Tailwind v4, Prisma 6 + SQLite (dev) with a Postgres
 migration path for production, custom signed-cookie JWT auth. This was chosen deliberately in
-Phase 1 (see `PROJECT_STATE.md` "Key architectural decisions") and nothing about the Trading X
+Phase 1 (see [`PROJECT_STATE.md`](PROJECT_STATE.md) "Key architectural decisions") and nothing about the Trading X
 brief argues for a rewrite — "prefer boring, reliable technology over fashionable complexity" is
 one of the brief's own non-negotiables. The stack is not yet proven at scale (no load testing, no
 production deployment), but that's a scaling question for later phases, not a reason to swap
@@ -92,16 +100,16 @@ that was the original plan, and it was built, but in-browser verification caught
 this project's Next.js 16.3.0 + Turbopack setup, `redirect()` called from inside an awaited
 cross-module helper does not propagate correctly (the component silently continues rendering with
 a null session instead of redirecting — reproduced identically on the pre-existing admin path, not
-specific to the new student code). Full writeup and the fix in `SECURITY.md`'s "Known Next.js 16
+specific to the new student code). Full writeup and the fix in [`SECURITY.md`](SECURITY.md)'s "Known Next.js 16
 redirect quirk". The working pattern instead: every protected layout/page/action calls
 `const session = await getSession(); if (!session) redirect(...)` **directly in its own body**,
 using the data-only session getters above. This is more repetition than the originally-planned
 shared guard, but it's the one pattern proven to actually redirect in this runtime — don't
 "clean it up" into a shared helper without re-verifying in a real browser first.
 
-Student auth landed as the first Phase 1 milestone (see `ROADMAP.md`): `Student.passwordHash` /
+Student auth landed as the first Phase 1 milestone (see [`ROADMAP.md`](ROADMAP.md)): `Student.passwordHash` /
 `Student.authEnabledAt` (nullable — a LEAD/TRIAL CRM record can exist with no login yet, resolving
-the question `DATABASE.md` §2.1 originally left open), `/student/login`, and a gated
+the question [`DATABASE.md`](DATABASE.md) §2.1 originally left open), `/student/login`, and a gated
 `/student` dashboard proving the full pattern end-to-end (session → entitlement check →
 student-scoped DB query).
 
@@ -117,11 +125,11 @@ emitter from, once (for example) both progression *and* achievements need to rea
 
 ## AI system integration
 
-Full detail in `AI_ARCHITECTURE.md`. At the architecture level: the AI layer is a bounded
+Full detail in [`AI_ARCHITECTURE.md`](AI_ARCHITECTURE.md). At the architecture level: the AI layer is a bounded
 subsystem (`domains/ai-tutor/`) that can read approved knowledge and student-scoped data through
 explicit, narrow interfaces — it never gets raw database access, and it never performs
 deterministic calculations (R-multiples, drawdown, XP, Trader Score) that plain code can do
-reliably. This mirrors the root `CLAUDE.md`'s "AI layer can only ever produce a Signal; only the
+reliably. This mirrors the root [`CLAUDE.md`](CLAUDE.md)'s "AI layer can only ever produce a Signal; only the
 deterministic Risk Manager + Execution Adapter can touch a broker" rule from the trading side of
 this repo — same shape, applied to the education side: AI can only ever produce an *interpretation
 or a question*, never an authoritative score or a silent database mutation.
