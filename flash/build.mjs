@@ -706,7 +706,7 @@ const _byWidth = (_pg[0] - 24 - (sheetCols - 1) * 3) / sheetCols
  * constraint, so the cell has to be the smaller of the two.
  */
 const sheetRows = Number(config.sheetRows) || 0
-const _CAP = 4
+const _CAP = 0   // no caption under a flash sheet design
 const _ROWGAP = 4
 // Height available for the grid once a minimum page margin is reserved.
 const _byHeight = sheetRows
@@ -740,10 +740,7 @@ const _cellHtml = (d) => {
       ? prepareSvg(readFileSync(join(DESIGNS_DIR, d.file), 'utf8'), `s-${d.slug}`)
       : `<img class="art" src="designs/${encodeURIComponent(d.file)}" alt="${esc(d.title)}">`
   if (!art) return ''
-  return `      <figure class="cell">
-        <div class="plate">${art}</div>
-        <figcaption>${esc(d.ref)}</figcaption>
-      </figure>`
+  return `      <figure class="cell"><div class="plate">${art}</div></figure>`
 }
 
 /**
@@ -793,16 +790,8 @@ const sheetPage = `<!doctype html>
   }
   @media screen{ .sheet-page + .sheet-page{ margin-top:14mm; padding-top:14mm; border-top:1px dashed #ccc } }
   .cell{ margin:0; break-inside:avoid; page-break-inside:avoid; text-align:center }
-  .plate{
-    display:grid; place-items:center; aspect-ratio:1; padding:1.2mm;
-    border:.3pt solid #e0e0e0; border-radius:1.2mm; background:#fff;
-  }
+  .plate{ display:grid; place-items:center; aspect-ratio:1; background:#fff }
   .art{ width:100%; height:100%; object-fit:contain; min-width:0; min-height:0; color:#111 }
-  figcaption{
-    height:${CAP_MM}mm; line-height:${CAP_MM}mm; margin:0;
-    font-size:6.5pt; letter-spacing:.02em; color:#555;
-    font-variant-numeric:tabular-nums;
-  }
   .hint{
     margin:0 0 6mm; padding:4mm; border:.4pt dashed #bbb; border-radius:2mm;
     font-size:11px; color:#444; display:flex; gap:4mm; align-items:center; flex-wrap:wrap;
@@ -860,7 +849,7 @@ const testCells = designs
         ? prepareSvg(readFileSync(join(DESIGNS_DIR, d.file), 'utf8'), `t-${d.slug}`)
         : `<img class="art" src="designs/${encodeURIComponent(d.file)}" alt="${esc(d.title)}">`
     return art
-      ? `    <figure class="cell"><div class="plate">${art}</div><figcaption>${esc(d.ref)}</figcaption></figure>`
+      ? `    <figure class="cell"><div class="plate">${art}</div></figure>`
       : ''
   })
   .filter(Boolean)

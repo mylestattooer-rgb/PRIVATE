@@ -2072,7 +2072,8 @@
     "placement": "",
     "notes": "",
     "repeatable": false,
-    "hidden": false
+    "hidden": false,
+    "missing": true
   },
   "Asset 3453.svg": {
     "ref": "BW-195",
@@ -3692,7 +3693,8 @@
     "placement": "",
     "notes": "",
     "repeatable": false,
-    "hidden": false
+    "hidden": false,
+    "missing": true
   },
   "Asset 3615.svg": {
     "ref": "BW-357",
@@ -4832,7 +4834,8 @@
     "placement": "",
     "notes": "",
     "repeatable": false,
-    "hidden": false
+    "hidden": false,
+    "missing": true
   },
   "Asset 3729.svg": {
     "ref": "BW-471",
@@ -7852,7 +7855,8 @@
     "placement": "",
     "notes": "",
     "repeatable": false,
-    "hidden": false
+    "hidden": false,
+    "missing": true
   },
   "Asset 4031.svg": {
     "ref": "BW-773",
@@ -12642,7 +12646,8 @@
     "placement": "",
     "notes": "",
     "repeatable": false,
-    "hidden": false
+    "hidden": false,
+    "missing": true
   },
   "Asset 4510.svg": {
     "ref": "BW-1252",
@@ -12652,7 +12657,8 @@
     "placement": "",
     "notes": "",
     "repeatable": false,
-    "hidden": false
+    "hidden": false,
+    "missing": true
   },
   "Asset 4511.svg": {
     "ref": "BW-1253",
