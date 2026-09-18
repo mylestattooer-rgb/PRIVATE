@@ -1,3 +1,11 @@
+---
+title: Database — Prisma Schema and Data Model
+doc_type: reference
+status: mixed
+updated: 2026-08-12
+tags: [doc/reference, doc/data, status/mixed]
+---
+
 # DATABASE — Trading X
 
 Status: mixed, and this doc now spans several build sessions (2026-08-10 through 2026-08-11) —
@@ -30,7 +38,7 @@ aspirational.
 - **Document** / **DocumentChunk** — knowledge base source + TF-IDF retrieval chunks. Flags:
   `isSample` (fake demo content), `needsReview` (real content, not yet admin-confirmed),
   `trustLevel` (A_OFFICIAL/B_INSTRUCTOR_APPROVED/C_REFERENCE/D_COMMUNITY, admin-set, default
-  C_REFERENCE — see `AI_ARCHITECTURE.md` "Knowledge trust levels"), `status`
+  C_REFERENCE — see [`AI_ARCHITECTURE.md`](AI_ARCHITECTURE.md) "Knowledge trust levels"), `status`
   (PROCESSING/READY/ERROR).
 - **Conversation** / **Message** / **Citation** — AI chat history. `Conversation.scope`
   distinguishes STUDENT vs ADMIN — both now have real UIs (`/admin/chat`, `/student/ai-tutor`),
@@ -45,7 +53,7 @@ aspirational.
 ## 2. Planned evolution (NOT YET IMPLEMENTED — spec only, except §2.1)
 
 Ordered roughly by dependency, not by brief section number. Each addition should land in its own
-migration, attached to the Phase (see `ROADMAP.md`) that actually needs it — this list is not a
+migration, attached to the Phase (see [`ROADMAP.md`](ROADMAP.md)) that actually needs it — this list is not a
 single big migration to run now.
 
 ### 2.1 Student identity — DONE
@@ -61,7 +69,7 @@ separately. `Plan`/`planId` also landed, seeded with one `free` plan. Migration:
 - **Course** — groups Modules. `Module.courseId` is nullable (ungrouped modules stay valid); the
   one seeded `Course` ("Foundations") has all 6 sample modules backfilled onto it.
 - **Lesson** / **LessonVersion** — built as specced: `Lesson` is the atomic unit within a `Module`,
-  `status` (DRAFT/REVIEW/PUBLISHED/ARCHIVED per `CURRICULUM_SYSTEM.md`), `currentVersionId` points
+  `status` (DRAFT/REVIEW/PUBLISHED/ARCHIVED per [`CURRICULUM_SYSTEM.md`](CURRICULUM_SYSTEM.md)), `currentVersionId` points
   at whichever `LessonVersion` students see (only repointed on publish, per the versioning
   guarantee). Editing creates a new `LessonVersion` and resets `status` to DRAFT without touching
   `currentVersionId` — verified in-browser: publishing a lesson then editing it left the published
@@ -82,7 +90,7 @@ separately. `Plan`/`planId` also landed, seeded with one `free` plan. Migration:
   climbs from *sustained* correct streaks (1→LEARNING, 2→UNDERSTOOD, 3→APPLIED, 5→CONSISTENT,
   8→MASTERED) — thresholds chosen as a reasonable default, not derived from any real usage data
   yet. `lastEvidenceAt` is captured but the time-based confidence-decay mechanic the brief also
-  wants (`CURRICULUM_SYSTEM.md`) is still not built — that's a separate mechanism from the
+  wants ([`CURRICULUM_SYSTEM.md`](CURRICULUM_SYSTEM.md)) is still not built — that's a separate mechanism from the
   streak-reset-on-wrong-answer behavior here, deliberately not conflated with it.
 
 ### 2.3 Assessment — partially DONE (basic quizzes; randomization/anti-cheating still pending)
@@ -90,7 +98,7 @@ separately. `Plan`/`planId` also landed, seeded with one `free` plan. Migration:
 - **Question** / **QuestionAttempt** — built: `Question.choices` is a JSON-encoded string array
   (freeform count, not fixed at 4), `correctIndex` is the deterministic answer key, tagged to
   `Concept`s. Grading (`app/lib/domains/assessment/questions.ts`'s `gradeAttempt()`) is plain index
-  equality — never AI judgment, per `AI_ARCHITECTURE.md`'s determinism boundary. **Not yet built**:
+  equality — never AI judgment, per [`AI_ARCHITECTURE.md`](AI_ARCHITECTURE.md)'s determinism boundary. **Not yet built**:
   randomized question selection from a pool (anti-cheating, brief §53) — today a lesson's questions
   are always shown in full and in the same order; fine for the current single-question demo lesson,
   a real gap once a lesson has enough questions that order/subset matters.
@@ -99,7 +107,7 @@ separately. `Plan`/`planId` also landed, seeded with one `free` plan. Migration:
   student's reply, m2m to the `Concept`s it tests. Image handling turned out not to need new
   infrastructure: the file is validated (type/size) in the Server Action and stored as a `data:`
   URL directly in the `imageDataUrl` TEXT column — no external blob storage, matching this app's
-  single-SQLite-file architecture. See `ROADMAP.md` Phase 5 and `PROJECT_STATE.md` "Chart Lab" for
+  single-SQLite-file architecture. See [`ROADMAP.md`](ROADMAP.md) Phase 5 and [`PROJECT_STATE.md`](PROJECT_STATE.md) "Chart Lab" for
   the real gaps (no concept-tagging UI yet, real-provider mode doesn't send the image to the AI).
 
 ### 2.4 Journal intelligence — DONE (deterministic version; not yet AI-phrased)
@@ -159,7 +167,7 @@ separately. `Plan`/`planId` also landed, seeded with one `free` plan. Migration:
 ### 2.8 Community (Phase 8)
 
 - **CommunityPost** / **Comment** / **Reaction**, plus a `trustLevel` marker inherited from the
-  `Document` knowledge-trust design (see `AI_ARCHITECTURE.md`) so community content is never
+  `Document` knowledge-trust design (see [`AI_ARCHITECTURE.md`](AI_ARCHITECTURE.md)) so community content is never
   silently promotable to authoritative methodology.
 
 ### 2.9 Knowledge trust levels (Phase 4, alongside AI tutor work)
@@ -167,7 +175,7 @@ separately. `Plan`/`planId` also landed, seeded with one `free` plan. Migration:
 - Add `Document.trustLevel` enum (A_OFFICIAL / B_INSTRUCTOR_APPROVED / C_REFERENCE / D_COMMUNITY).
   Coexists with today's `isSample`/`needsReview` rather than replacing them — those two answer "is
   this fake/unconfirmed," `trustLevel` answers "whose authority is this, once confirmed." Full
-  reasoning in `AI_ARCHITECTURE.md`.
+  reasoning in [`AI_ARCHITECTURE.md`](AI_ARCHITECTURE.md).
 
 ## Data integrity rules that apply to every addition above
 

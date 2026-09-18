@@ -1,3 +1,11 @@
+---
+title: HeyGen Content Pipeline — Feasibility Audit
+doc_type: proposal
+status: proposal
+updated: 2026-08-12
+tags: [doc/proposal, doc/content, status/proposal]
+---
+
 # HeyGen Content Pipeline — Feasibility Audit & Architecture Proposal
 
 **Status:** Proposal / research complete, nothing built or purchased. **Recommendation: Conditional GO** — start with the free tier manually, no API spend, no automation, until three specific unknowns are resolved empirically (see §8).
@@ -26,8 +34,8 @@ Audited directly (file paths, not guesses):
 - **AI provider abstraction** — [`trading_school/app/lib/ai/provider.ts`](app/lib/ai/provider.ts). Clean `AiProvider` interface, `AnthropicProvider` calls Claude directly via `fetch()` (model hardcoded `claude-sonnet-5`), key read from `process.env.ANTHROPIC_API_KEY`, singleton factory `getAiProvider()`. **This is exactly the thing script-generation should call into** — no new LLM plumbing needed, just a new call site (and probably a longer `max_tokens` than the 1024 used for chat answers).
 - **No orchestration/job-queue infrastructure anywhere in the repo.** Every existing AI call is synchronous request→response from a Server Action or Route Handler. A HeyGen pipeline needs async job tracking (poll or webhook for a render that takes minutes) — this has to be built from scratch, nothing to reuse.
 - **Agent R&D System** (`agents/`, `AGENT_CONSTITUTION.md`, `AGENT_RD_SYSTEM_PROPOSAL.md`) — this is a **manual, per-invocation prompt-template system for trading-strategy research** (Meridian-7 vertical), not executable automation. A human Supervisor hand-picks a role file and spawns one Agent tool call at a time; `ledger/db.py`'s sqlite tables are a bookkeeping trail written by hand, not a dispatcher. **Nothing here can be "called" by a content pipeline** — if Claude-driven script generation should follow this project's agent conventions, the pattern to imitate is "one well-scoped Agent call per script," not an integration with existing code.
-- **Trading School OS roadmap** (`PROJECT_STATE.md`) has zero mention of video/content pipeline — Phase 5 (Chart Lab) is next, long-term vision section doesn't mention this either. This is a **net-new initiative**, not a natural extension of a planned phase.
-- **`Approval` Prisma model** exists in `trading_school/prisma/schema.prisma` but nothing writes to it or reads it yet (confirmed in `PROJECT_STATE.md`'s own notes). This is the one existing schema artifact worth reusing/extending for the "no auto-publish without approval" gate, rather than inventing a parallel approval concept.
+- **Trading School OS roadmap** ([`PROJECT_STATE.md`](PROJECT_STATE.md)) has zero mention of video/content pipeline — Phase 5 (Chart Lab) is next, long-term vision section doesn't mention this either. This is a **net-new initiative**, not a natural extension of a planned phase.
+- **`Approval` Prisma model** exists in `trading_school/prisma/schema.prisma` but nothing writes to it or reads it yet (confirmed in [`PROJECT_STATE.md`](PROJECT_STATE.md)'s own notes). This is the one existing schema artifact worth reusing/extending for the "no auto-publish without approval" gate, rather than inventing a parallel approval concept.
 - **Obsidian vault has no programmatic reader.** `vault/_scripts/sync_vault.py` is a one-way hard-link mirror for canonical docs, run manually, not a content API. No `Trading X` folder exists under `vault/20-Projects/` today. Vault-as-knowledge-source for this pipeline means **new ingestion code**, not something to plug into.
 - **Secrets convention is simple and consistent**: `.env` (git-ignored) + `.env.example` (checked in), read via plain `process.env.X` at point of use — see `ANTHROPIC_API_KEY` in `provider.ts`. A `HEYGEN_API_KEY` should follow the identical pattern.
 

@@ -30,13 +30,11 @@ jobs:
 
       - run: npm run lint
 
-      # Next 16 generates the route type helpers (LayoutProps, PageProps,
-      # RouteContext) into .next/types, which tsconfig.json includes. Those used
-      # to appear only after `next dev`/`next build`, so a bare `tsc --noEmit`
-      # in CI failed on app/layout.tsx's `LayoutProps<"/">` — which is why this
-      # workflow had never gone green. `next typegen` generates them without a
-      # full build; see node_modules/next/dist/docs/01-app/03-api-reference/
-      # 06-cli/next.md, which documents exactly this CI pattern.
+      # Next 16 generates the global route/page/layout types (LayoutProps,
+      # PageProps) into .next/types, wired in via next-env.d.ts. Neither is
+      # committed, so on a clean runner `tsc --noEmit` can't see them and
+      # fails on app/layout.tsx's LayoutProps<"/">. Locally this passes only
+      # because a prior `next dev`/`next build` left them on disk.
       - run: npx next typegen
 
       - run: npx tsc --noEmit

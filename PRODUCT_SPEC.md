@@ -1,7 +1,15 @@
+---
+title: Product Spec — Philosophy and Direction
+doc_type: product
+status: discovery
+updated: 2026-08-10
+tags: [doc/product, status/discovery]
+---
+
 # PRODUCT_SPEC — Trading X
 
 Status: Phase 0 (discovery). This document states product philosophy and direction. For what is
-actually built today, see `PROJECT_STATE.md` — that file's WORKING/MOCKED/NOT-YET-IMPLEMENTED
+actually built today, see [`PROJECT_STATE.md`](PROJECT_STATE.md) — that file's WORKING/MOCKED/NOT-YET-IMPLEMENTED
 table is the single source of truth on build status; this file does not duplicate it.
 
 ## What Trading X is
@@ -30,12 +38,12 @@ LEARN → UNDERSTAND → IDENTIFY → EXPLAIN → PRACTICE → SIMULATE → EXEC
 
 The platform should continuously answer "what does this trader actually understand?" — not
 "what videos have they watched?" Watching a lesson does not prove competence. As the platform
-matures (see `ROADMAP.md` Phase 2 onward), progression increasingly requires demonstrated
+matures (see [`ROADMAP.md`](ROADMAP.md) Phase 2 onward), progression increasingly requires demonstrated
 understanding: quiz performance, chart recognition, scenario assessments, simulator performance,
 not just lesson-completion checkboxes.
 
 This mirrors a principle already load-bearing on the trading-research side of this repo (root
-`CLAUDE.md`): results only count once they survive scrutiny, not once they look good on the
+[`CLAUDE.md`](CLAUDE.md)): results only count once they survive scrutiny, not once they look good on the
 surface. Applied here: a student's progress score only counts once it's backed by demonstrated
 performance, not merely time spent in the app.
 
@@ -48,13 +56,13 @@ mean, why price moves, or what actually happens when they press Buy or Sell.
 
 Trading X should answer the questions traditional trading education skips. A beginner should
 never feel stupid for not knowing something. The system progressively builds their mental model
-from first principles — this is a curriculum-sequencing requirement (see `CURRICULUM_SYSTEM.md`
+from first principles — this is a curriculum-sequencing requirement (see [`CURRICULUM_SYSTEM.md`](CURRICULUM_SYSTEM.md)
 prerequisite model), not just a tone guideline.
 
 ## Product domains
 
 The full long-term feature surface, grouped as the product actually experiences them (not as a
-literal 1:1 map to code modules — see `ARCHITECTURE.md` for the code-level domain boundaries):
+literal 1:1 map to code modules — see [`ARCHITECTURE.md`](ARCHITECTURE.md) for the code-level domain boundaries):
 
 - **Education** — lessons, curriculum, prerequisites, multiple content types
 - **Assessment** — quizzes, chart recognition, scenario training
@@ -88,14 +96,14 @@ Beginners get substantial guidance. Advanced students get challenged to think in
 Chart Lab AI in particular must resist simply telling a student what trade to take — it asks what
 they see, then asks targeted follow-up questions (what makes you consider that a sweep, where
 would the idea invalidate, what's the higher-timeframe context) rather than handing over an
-answer. Full behavior spec in `AI_ARCHITECTURE.md`.
+answer. Full behavior spec in [`AI_ARCHITECTURE.md`](AI_ARCHITECTURE.md).
 
 ## Explicit non-goals for now
 
 Naming this here so scope creep is visible when it happens: no real trades, no broker fund
 movement, no live risk of any kind — this platform is educational/simulated only, full stop, and
 that boundary is permanent, not a Phase 1-only caveat. No claim of certainty on subjective chart
-interpretation (see `AI_ARCHITECTURE.md`'s FACT/OBSERVATION/INTERPRETATION/HYPOTHESIS/RULE/UNKNOWN
+interpretation (see [`AI_ARCHITECTURE.md`](AI_ARCHITECTURE.md)'s FACT/OBSERVATION/INTERPRETATION/HYPOTHESIS/RULE/UNKNOWN
 distinction). No personalized financial advice. No AI-invented Trading X methodology — if the
 curriculum doesn't define something, the AI says so rather than filling the gap.
 
