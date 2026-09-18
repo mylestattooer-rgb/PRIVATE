@@ -84,6 +84,8 @@ static host — Netlify, Cloudflare Pages, GitHub Pages. There's no server to ru
 Vector (SVG) is worth preferring: the designs stay sharp at any zoom, the files are tiny,
 and they're embedded straight into the page.
 
-Artwork is always drawn in black and inverted by CSS for the dark theme, so export your
-designs as **black on transparent or white** and both themes look right. Don't pre-invert a
-design to white — it'll come out backwards.
+Designs always render as **black ink on a white plate, in both themes**. A tattoo shown
+white-on-black reads as a negative and misrepresents how the design will sit on skin, so the
+plates never invert — only the page chrome around them follows the viewer's theme.
+
+Export your artwork as **black on transparent or white**.

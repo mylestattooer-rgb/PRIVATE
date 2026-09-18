@@ -223,7 +223,7 @@ const hasRaster = designs.some((d) => !d.file.toLowerCase().endsWith('.svg'))
 const DARK_TOKENS = `
       --bone:#131313; --ink:#F2EFE8; --muted:#8C877D; --line:#2A2A2A;
       --card:#000000; --accent:#F2EFE8; --on-accent:#0E0E0E;
-      --shadow:none; --invert:1;
+      --shadow:none;
     `
 
 const contactLinks = []
@@ -280,10 +280,11 @@ const page = `<!doctype html>
     --bone:#F4F1EA; --ink:#141414; --muted:#6B675F; --line:#DAD5C9;
     --card:#FFFFFF; --accent:#141414; --on-accent:#F4F1EA;
     --shadow:0 1px 2px rgba(20,20,20,.05), 0 8px 24px rgba(20,20,20,.06);
-    /* Artwork ink is deliberately NOT re-themed. Art is always drawn black and the
-       invert filter below flips it for dark mode, so files using currentColor and
-       files with hardcoded black both behave identically. */
-    --art-ink:#141414; --invert:0;
+    /* Artwork is always black ink on a paper plate, in BOTH themes. A tattoo
+       shown white-on-black is a negative — it misrepresents how the design sits
+       on skin — so the plate and the ink are deliberately never re-themed and
+       never inverted. Only the page chrome around them follows the theme. */
+    --art-ink:#141414; --plate:#FFFFFF;
   }
   @media (prefers-color-scheme:dark){
     :root:not([data-theme="light"]){ ${DARK_TOKENS} }
@@ -349,11 +350,11 @@ const page = `<!doctype html>
   .card:hover{transform:translateY(-3px); border-color:var(--ink)}
   .card[hidden]{display:none}
   .frame{
-    display:grid; place-items:center; aspect-ratio:1; margin-bottom:14px; color:var(--art-ink);
+    display:grid; place-items:center; aspect-ratio:1; margin-bottom:14px;
+    color:var(--art-ink); background:var(--plate); border-radius:10px; padding:14px;
   }
   .art{
     width:100%; height:100%; max-height:100%; object-fit:contain;
-    filter:invert(var(--invert));
   }
   .meta .ref{
     font-size:11px; letter-spacing:.14em; color:var(--muted);
@@ -380,7 +381,7 @@ const page = `<!doctype html>
   .sheet{display:grid; grid-template-columns:1.1fr .9fr}
   @media (max-width:720px){ .sheet{grid-template-columns:1fr} }
   .sheet-art{
-    display:grid; place-items:center; padding:28px; background:var(--card);
+    display:grid; place-items:center; padding:28px; background:var(--plate);
     aspect-ratio:1; color:var(--art-ink);
   }
   @media (max-width:720px){ .sheet-art{aspect-ratio:4/3; padding:20px} }
@@ -414,7 +415,7 @@ const page = `<!doctype html>
 
   /* Print / save-as-PDF: the same catalogue as a flash book. */
   @media print{
-    :root{--bone:#fff; --card:#fff; --line:#ddd; --shadow:none; --invert:0}
+    :root{--bone:#fff; --card:#fff; --line:#ddd; --shadow:none}
     .controls,.icon-btn,.nav,.actions,.count,dialog{display:none!important}
     body{background:#fff}
     header{padding-top:0; border-bottom:1px solid #ddd}
