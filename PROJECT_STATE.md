@@ -1,3 +1,11 @@
+---
+title: Project State — WORKING / MOCKED / NOT IMPLEMENTED
+doc_type: source-of-truth
+status: living
+updated: 2026-08-14
+tags: [doc/state, status/living]
+---
+
 # PROJECT_STATE — Trading School OS
 
 **RESUMED 2026-08-14** — the admin explicitly resumed real build work after a full audit session (see
@@ -24,7 +32,7 @@ clean. Prior entry, 2026-08-13: entitlement gate added to Chart Lab, both un-ent
 states browser-verified, stale docs corrected. Prior entry, 2026-08-12: Phase 0 discovery through
 Phase 4 as that session scoped each phase — auth/entitlements, curriculum+quizzes+XP+levels+
 achievements+mastery, trading journal, and knowledge trust levels + a student-facing AI Tutor — all
-built and verified; see below and `ROADMAP.md`. Phase 5 (Chart Lab) was built, wired end-to-end, and
+built and verified; see below and [`ROADMAP.md`](ROADMAP.md). Phase 5 (Chart Lab) was built, wired end-to-end, and
 browser-verified too).
 
 ## Repo extraction (2026-08-14)
@@ -103,9 +111,9 @@ re-deriving context.
 
 **Trading X long-term architecture**: this file stays the single source of truth for *current*
 build status (the table right below). For the full 62-section product vision and its Phase 0-10
-architecture reconciliation, see `PRODUCT_SPEC.md`, `ARCHITECTURE.md`, `DATABASE.md`,
-`AI_ARCHITECTURE.md`, `SECURITY.md`, `CURRICULUM_SYSTEM.md`, and — most useful for "what's next" —
-`ROADMAP.md`.
+architecture reconciliation, see [`PRODUCT_SPEC.md`](PRODUCT_SPEC.md), [`ARCHITECTURE.md`](ARCHITECTURE.md), [`DATABASE.md`](DATABASE.md),
+[`AI_ARCHITECTURE.md`](AI_ARCHITECTURE.md), [`SECURITY.md`](SECURITY.md), [`CURRICULUM_SYSTEM.md`](CURRICULUM_SYSTEM.md), and — most useful for "what's next" —
+[`ROADMAP.md`](ROADMAP.md).
 
 ## What has been built (Phase 1)
 
@@ -128,7 +136,7 @@ live.
 | Audit log | **WORKING** | Every login, AI query/response, student/document mutation logged (`AuditLog` table) |
 | Sample/placeholder labeling | **WORKING** | Seeded curriculum modules and knowledge docs are visibly marked "(sample)" / "SAMPLE" everywhere they appear — never presented as real methodology |
 | Extracted-content review workflow | **WORKING** | `Document.needsReview` flag, distinct from `isSample` — see "Methodology extraction" section below |
-| Student login + dashboard | **WORKING** | `/student/login`, gated `/student` dashboard; separate session cookie from admin (`ARCHITECTURE.md` "Auth: two principal types"); only ACTIVE demo students have login enabled, TRIAL/PAUSED/LEAD correctly rejected |
+| Student login + dashboard | **WORKING** | `/student/login`, gated `/student` dashboard; separate session cookie from admin ([`ARCHITECTURE.md`](ARCHITECTURE.md) "Auth: two principal types"); only ACTIVE demo students have login enabled, TRIAL/PAUSED/LEAD correctly rejected |
 | Entitlements | **WORKING** | `app/lib/domains/entitlements/`, one capability (`USE_AI_TUTOR`) checked server-side and shown on the student dashboard |
 | Automated tests | **WORKING (minimal)** | vitest, `npm test` — 60 tests: pure-function coverage across retrieval/auth/learning/assessment/progression/journal/chartlab, plus (new 2026-08-14) real Prisma-backed integration tests for Chart Lab's Server Action-facing domain functions — see "Test infrastructure" above |
 | CI | **LIVE** | `.github/workflows/ci.yml`, now running against `mylestattooer-rgb/PRIVATE` on GitHub since the 2026-08-14 repo extraction (see "Repo extraction" below) — first time it's actually executed since being stubbed out inert in Phase 1 |
@@ -139,10 +147,10 @@ live.
 | Achievements | **WORKING (one)** | `Achievement`/`UserAchievement`, unlocked server-side inside the grading transaction; `FIRST_QUIZ_PASSED` seeded and verified unlocking + displaying on dashboard |
 | Concept mastery | **WORKING** | `ConceptMastery`, driven by `QuestionAttempt` evidence via pure `applyMasteryEvidence()`; verified NOT_INTRODUCED→LEARNING transition on a fresh correct answer, shown on student dashboard |
 | Trading journal | **WORKING** | `/student/journal` — create/delete trades, deterministic stats (win rate, avg R, best/worst setup, top mistake); data isolation verified (a second student's journal correctly showed empty) |
-| Journal AI insights | **WORKING (deterministic)** | `AiInsight`, evidence-linked to the trades it summarizes; gated at 5 trades minimum (never manufactures a conclusion from too little data); text is template-based today, not yet routed through `app/lib/ai/provider.ts` — see `DATABASE.md` §2.4 |
+| Journal AI insights | **WORKING (deterministic)** | `AiInsight`, evidence-linked to the trades it summarizes; gated at 5 trades minimum (never manufactures a conclusion from too little data); text is template-based today, not yet routed through `app/lib/ai/provider.ts` — see [`DATABASE.md`](DATABASE.md) §2.4 |
 | Knowledge trust levels | **WORKING** | `Document.trustLevel` (A_OFFICIAL/B_INSTRUCTOR_APPROVED/C_REFERENCE/D_COMMUNITY), admin-settable at `/admin/knowledge`; both AI providers and citation UI factor it in |
 | Student AI Tutor | **WORKING** | `/student/ai-tutor`, entitlement-gated, own Route Handler with student-scoped conversation isolation; verified real Q&A, cross-student isolation, and a rejected hijack attempt |
-| Chart Lab | **WORKING** | `/admin/chart-lab` (upload chart + task) and `/student/chart-lab` (answer "what do you see?" → one AI Socratic follow-up → student reply); `ChartExercise`/`ChartAnswer` models + migration `20260811185640_add_chart_lab`; image stored as a `data:` URL directly in SQLite (no external blob storage needed — the "needs image-upload infrastructure" blocker this doc previously listed doesn't apply, the feature was designed around not needing any). `socraticFollowUp()` in `app/lib/ai/provider.ts` calls `pickSocraticQuestion()` (`app/lib/domains/chartlab/socratic.ts`, deterministic question bank) in mock mode or a real Anthropic call (system-prompted to ask, never grade or reveal) when `ANTHROPIC_API_KEY` is set — not dead code, genuinely wired from student action → domain function → provider. Student answers/follow-ups scoped by `studentId` on both read and write. Seeded with 1 sample exercise (placeholder SVG chart) in `prisma/seed.ts`. 4 unit tests for the pure `pickSocraticQuestion` selection logic pass (`socratic.test.ts`); full suite is 51/51 passing; `npx tsc --noEmit` is clean. **Manually verified live in-browser 2026-08-12**: logged in as admin, viewed the seeded exercise on `/admin/chart-lab` with its uploaded image and answer count rendering correctly; logged in as student `ava.whitfield@example.com` on `/student/chart-lab` and confirmed a full real round trip already existed in the DB — her "what do you see" answer, the AI's mock-mode Socratic follow-up question, and her reply to it, all rendering correctly on reload. Confirms the Server Action → domain function → provider → DB write chain genuinely works end-to-end, not just typechecks. **Committed** 2026-08-12 (`41105fc`, `fa77c07`) — `app/admin/chart-lab/`, `app/lib/domains/chartlab/`, `app/student/(app)/chart-lab/`, the migration, `schema.prisma`, both `layout.tsx` nav files, `provider.ts`, and `seed.ts` are all tracked. **Entitlement gate added and browser-verified 2026-08-13**: new `USE_CHART_LAB` capability (`app/lib/domains/entitlements/capabilities.ts`), gated exactly like `USE_AI_TUTOR` — page-level upsell ("Chart Lab isn't on your current plan yet.") in `app/student/(app)/chart-lab/page.tsx` plus a defense-in-depth `studentCan()` check inside both Server Actions in `app/student/(app)/chart-lab/actions.ts` (silent no-op on rejection, matching that file's existing invalid-input convention rather than the API-route 403 pattern, since Server Actions have no response-status channel here). Granted on the seeded `free` plan alongside `USE_AI_TUTOR`; the nav item stays visible either way (same as AI Tutor), only the page content and mutations are gated. Verified live in-browser: an un-entitled student (`free` plan capabilities temporarily set to just `USE_AI_TUTOR`) saw the upsell block and nothing else; the same student, re-granted `USE_CHART_LAB`, could still browse an exercise; a second student (`marcus.odei@example.com`, entitled) completed a fresh full round trip — submitted an answer, got a real Socratic follow-up, submitted a reply, all persisted correctly on reload — confirming the gate didn't disturb the existing Server Action → domain function → provider → DB write chain. **Real gaps, still not closed**: (1) no automated test coverage for the Server Actions/DB writes/upload validation or the new entitlement check, only the pure question-picker (`socratic.test.ts`) — matches the fact that `USE_AI_TUTOR`'s gate has no test coverage either, so no new test infra was invented for this pass; (2) the admin create form has no concept-tagging UI — `createChartExercise()` accepts `conceptIds` but nothing in `app/admin/chart-lab/page.tsx` lets the admin set them, so `Concept`-tagged assessment (the brief's stated Chart Lab scope) isn't reachable yet; (3) in real (non-mock) `ANTHROPIC_API_KEY` mode, `socraticFollowUp()` sends only the exercise prompt text and the student's typed response to Claude — never the chart image itself, so even "real" mode is language-only, not actually looking at the chart — still an open, undecided product/scope question, not resolved by this pass; (4) no student-level-tuned scaffolding — `AI_ARCHITECTURE.md`'s TEACHER→COACH→QUESTIONER→REVIEWER posture shift by `Level` isn't wired in, question selection is purely `priorAnswerCount % bank.length`. `AI_ARCHITECTURE.md`, `SECURITY.md` §2.3, and `DATABASE.md` §2.3 already correctly described this as DONE (they were already accurate, not stale, when checked 2026-08-13); `ROADMAP.md` had one stale line ("Still entirely uncommitted") that has now been corrected. |
+| Chart Lab | **WORKING** | `/admin/chart-lab` (upload chart + task) and `/student/chart-lab` (answer "what do you see?" → one AI Socratic follow-up → student reply); `ChartExercise`/`ChartAnswer` models + migration `20260811185640_add_chart_lab`; image stored as a `data:` URL directly in SQLite (no external blob storage needed — the "needs image-upload infrastructure" blocker this doc previously listed doesn't apply, the feature was designed around not needing any). `socraticFollowUp()` in `app/lib/ai/provider.ts` calls `pickSocraticQuestion()` (`app/lib/domains/chartlab/socratic.ts`, deterministic question bank) in mock mode or a real Anthropic call (system-prompted to ask, never grade or reveal) when `ANTHROPIC_API_KEY` is set — not dead code, genuinely wired from student action → domain function → provider. Student answers/follow-ups scoped by `studentId` on both read and write. Seeded with 1 sample exercise (placeholder SVG chart) in `prisma/seed.ts`. 4 unit tests for the pure `pickSocraticQuestion` selection logic pass (`socratic.test.ts`); full suite is 51/51 passing; `npx tsc --noEmit` is clean. **Manually verified live in-browser 2026-08-12**: logged in as admin, viewed the seeded exercise on `/admin/chart-lab` with its uploaded image and answer count rendering correctly; logged in as student `ava.whitfield@example.com` on `/student/chart-lab` and confirmed a full real round trip already existed in the DB — her "what do you see" answer, the AI's mock-mode Socratic follow-up question, and her reply to it, all rendering correctly on reload. Confirms the Server Action → domain function → provider → DB write chain genuinely works end-to-end, not just typechecks. **Committed** 2026-08-12 (`41105fc`, `fa77c07`) — `app/admin/chart-lab/`, `app/lib/domains/chartlab/`, `app/student/(app)/chart-lab/`, the migration, `schema.prisma`, both `layout.tsx` nav files, `provider.ts`, and `seed.ts` are all tracked. **Entitlement gate added and browser-verified 2026-08-13**: new `USE_CHART_LAB` capability (`app/lib/domains/entitlements/capabilities.ts`), gated exactly like `USE_AI_TUTOR` — page-level upsell ("Chart Lab isn't on your current plan yet.") in `app/student/(app)/chart-lab/page.tsx` plus a defense-in-depth `studentCan()` check inside both Server Actions in `app/student/(app)/chart-lab/actions.ts` (silent no-op on rejection, matching that file's existing invalid-input convention rather than the API-route 403 pattern, since Server Actions have no response-status channel here). Granted on the seeded `free` plan alongside `USE_AI_TUTOR`; the nav item stays visible either way (same as AI Tutor), only the page content and mutations are gated. Verified live in-browser: an un-entitled student (`free` plan capabilities temporarily set to just `USE_AI_TUTOR`) saw the upsell block and nothing else; the same student, re-granted `USE_CHART_LAB`, could still browse an exercise; a second student (`marcus.odei@example.com`, entitled) completed a fresh full round trip — submitted an answer, got a real Socratic follow-up, submitted a reply, all persisted correctly on reload — confirming the gate didn't disturb the existing Server Action → domain function → provider → DB write chain. **Real gaps, still not closed**: (1) no automated test coverage for the Server Actions/DB writes/upload validation or the new entitlement check, only the pure question-picker (`socratic.test.ts`) — matches the fact that `USE_AI_TUTOR`'s gate has no test coverage either, so no new test infra was invented for this pass; (2) the admin create form has no concept-tagging UI — `createChartExercise()` accepts `conceptIds` but nothing in `app/admin/chart-lab/page.tsx` lets the admin set them, so `Concept`-tagged assessment (the brief's stated Chart Lab scope) isn't reachable yet; (3) in real (non-mock) `ANTHROPIC_API_KEY` mode, `socraticFollowUp()` sends only the exercise prompt text and the student's typed response to Claude — never the chart image itself, so even "real" mode is language-only, not actually looking at the chart — still an open, undecided product/scope question, not resolved by this pass; (4) no student-level-tuned scaffolding — [`AI_ARCHITECTURE.md`](AI_ARCHITECTURE.md)'s TEACHER→COACH→QUESTIONER→REVIEWER posture shift by `Level` isn't wired in, question selection is purely `priorAnswerCount % bank.length`. [`AI_ARCHITECTURE.md`](AI_ARCHITECTURE.md), [`SECURITY.md`](SECURITY.md) §2.3, and [`DATABASE.md`](DATABASE.md) §2.3 already correctly described this as DONE (they were already accurate, not stale, when checked 2026-08-13); [`ROADMAP.md`](ROADMAP.md) had one stale line ("Still entirely uncommitted") that has now been corrected. |
 
 ### Still out of scope (schema exists for some, no UI yet)
 
@@ -334,7 +342,7 @@ whenever they're ready, didn't want to auto-rename without asking).
   to `javascript_tool` clicking the actual element before concluding the app is broken.
 - **Real bug found and fixed 2026-08-10**: `redirect()` from `next/navigation` doesn't propagate
   when called inside an awaited cross-module helper in this Next.js 16.3.0 + Turbopack setup —
-  affected the pre-existing admin auth too, not just new code. Full writeup in `SECURITY.md`
+  affected the pre-existing admin auth too, not just new code. Full writeup in [`SECURITY.md`](SECURITY.md)
   "Known Next.js 16 redirect quirk". Only caught by in-browser verification; a unit test with a
   mocked `redirect()` would have (and initially did) hidden it.
 - **Turbopack stale route cache produced a false 404** (2026-08-11): a brand-new route
@@ -354,7 +362,7 @@ whenever they're ready, didn't want to auto-rename without asking).
   student-scoped conversation lookup — isolation itself was correct (a mismatched ID matched
   nothing), but the unhandled throw on that miss produced a raw 500 with a server-side stack trace
   instead of a clean 404. Fixed via `findFirst` + explicit not-found response. Full writeup in
-  `AI_ARCHITECTURE.md` "Student-facing AI Tutor." Caught by deliberately trying to hijack another
+  [`AI_ARCHITECTURE.md`](AI_ARCHITECTURE.md) "Student-facing AI Tutor." Caught by deliberately trying to hijack another
   student's conversation via a raw `fetch()`, not by normal-path testing — worth doing for any new
   student-scoped endpoint, not just the happy path.
 
@@ -374,10 +382,10 @@ whenever they're ready, didn't want to auto-rename without asking).
 4. Consider whether Next.js 16 / React 19 stay pinned as-is or get revisited once they're
    more battle-tested — flagging only because both were bleeding-edge at scaffold time, and
    this session found real behavioral quirks in this version (see Known issues above).
-5. **Randomized question pools** (`DATABASE.md` §2.3, brief §53) — no anti-cheating yet; fine with
+5. **Randomized question pools** ([`DATABASE.md`](DATABASE.md) §2.3, brief §53) — no anti-cheating yet; fine with
    one-to-two questions per lesson, a real gap once lessons have enough questions for order to
    matter.
-6. **Wire `AiInsight` to the real `AiProvider`** (`DATABASE.md` §2.4) — currently deterministic
+6. **Wire `AiInsight` to the real `AiProvider`** ([`DATABASE.md`](DATABASE.md) §2.4) — currently deterministic
    template text; swapping in real phrasing is additive, not urgent while mock-mode is the
    default provider anyway.
 7. **Chart Lab — core loop, entitlement gate, test coverage, and concept tagging all closed out. One

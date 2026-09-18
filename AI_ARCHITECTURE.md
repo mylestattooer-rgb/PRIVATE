@@ -1,7 +1,15 @@
+---
+title: AI Architecture — Provider, Retrieval, Citations
+doc_type: architecture
+status: mixed
+updated: 2026-08-12
+tags: [doc/architecture, doc/ai, status/mixed]
+---
+
 # AI_ARCHITECTURE — Trading X
 
 Status: Phase 0 (discovery) for everything under "Planned" below. The provider/retrieval/citation
-pipeline described under "Current" is real and implemented — see `PROJECT_STATE.md` for verified
+pipeline described under "Current" is real and implemented — see [`PROJECT_STATE.md`](PROJECT_STATE.md) for verified
 status.
 
 ## Current: provider abstraction + grounded retrieval (implemented)
@@ -75,7 +83,7 @@ shrugging off as "well, it didn't leak anything."
 
 Brief §11: distinguish FACT / OBSERVATION / INTERPRETATION / HYPOTHESIS / TRADING_X_RULE / UNKNOWN
 where the distinction matters — chiefly in Chart Lab responses (below) and journal-intelligence
-insights (`AiInsight`, see `DATABASE.md` §2.4). Concretely: an AI observation like "price swept the
+insights (`AiInsight`, see [`DATABASE.md`](DATABASE.md) §2.4). Concretely: an AI observation like "price swept the
 prior day's high" is closer to FACT/OBSERVATION; "this looks like a liquidity grab before reversal"
 is INTERPRETATION; "you tend to perform worse after two losses" is a HYPOTHESIS unless the sample
 size crosses a defined evidence threshold. **Never manufacture confidence percentages merely to
@@ -98,14 +106,14 @@ immediately telling the student what to think. Verified live in-browser 2026-08-
   The follow-up is grounded in what the student wrote about the chart, not independent visual
   analysis of it.
 - **No level-tuned scaffolding.** The TEACHER → COACH → QUESTIONER → REVIEWER posture shift by
-  student `Level` (`DATABASE.md` §2.5) isn't wired in — question selection is deterministic on
+  student `Level` ([`DATABASE.md`](DATABASE.md) §2.5) isn't wired in — question selection is deterministic on
   `priorAnswerCount` only, the same for a brand-new student and an advanced one.
 
 ## Hard boundary: deterministic calculations never come from the AI
 
 R-multiples, drawdown, XP totals, concept-mastery transitions, Trader Score (brief §25) — all
 plain, testable code. The AI may *interpret* an already-computed number ("your drawdown behavior
-worsened this week") but never *compute or silently adjust* it. This mirrors the root `CLAUDE.md`'s
+worsened this week") but never *compute or silently adjust* it. This mirrors the root [`CLAUDE.md`](CLAUDE.md)'s
 existing rule for the trading side of this repo ("AI layer can only ever produce a `Signal`; only
 the deterministic Risk Manager + Execution Adapter can touch a broker") — same shape, same reason:
 an LLM's job here is language and judgment support, not arithmetic authority, and mixing the two
@@ -131,11 +139,11 @@ existing prompt-injection stance generalized to this project:
   `/student/ai-tutor`'s page query), not just hidden in the UI. Verified in-browser: a second
   student's chat history page showed empty, and a direct hijack attempt (real `fetch()` with
   another student's conversation ID) was correctly rejected. Journal data isolation verified the
-  same way in Phase 3 — see `SECURITY.md` §2.1 and `PROJECT_STATE.md`.
+  same way in Phase 3 — see [`SECURITY.md`](SECURITY.md) §2.1 and [`PROJECT_STATE.md`](PROJECT_STATE.md).
 
 ## Content versioning and AI knowledge (ties to CURRICULUM_SYSTEM.md)
 
 Updating a lesson must not silently destroy the knowledge an existing AI conversation relied on.
-Once `LessonVersion` exists (Phase 2, see `DATABASE.md`), `DocumentChunk`/`Citation` references
+Once `LessonVersion` exists (Phase 2, see [`DATABASE.md`](DATABASE.md)), `DocumentChunk`/`Citation` references
 should resolve to the specific version cited at the time, not "whatever the lesson currently says"
 — so an old conversation's citations stay accurate even after the curriculum changes.
