@@ -813,8 +813,8 @@ const testPage = `<!doctype html>
     font:12px/1.45 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;
   }
   h1{ margin:0 0 1mm; font-size:15px; letter-spacing:-.01em }
-  .note{ margin:0 0 3mm; font-size:10px; color:#555 }
-  .ruler{ margin:0 0 5mm }
+  .note{ margin:0 0 2.5mm; font-size:10px; color:#555 }
+  .ruler{ margin:0 0 3mm }
   .bar{
     position:relative; width:100mm; height:7mm;
     border:.5pt solid #111; border-top:none;
@@ -823,7 +823,13 @@ const testPage = `<!doctype html>
   .bar span.major{ height:4.4mm }
   .bar b{ position:absolute; top:4.6mm; font-size:6.5pt; font-weight:400; transform:translateX(-50%) }
   .ruler p{ margin:1.5mm 0 0; font-size:9.5px; color:#111 }
-  .sheet{ display:grid; grid-template-columns:repeat(${testCols}, ${cellMm.toFixed(2)}mm); gap:4mm ${GAP_MM}mm; }
+  /* Fixed-width tracks leave a remainder when the design size does not divide
+     the page evenly; centring turns that remainder into an even margin rather
+     than a gap down one side. */
+  .sheet{
+    display:grid; grid-template-columns:repeat(${testCols}, ${cellMm.toFixed(2)}mm);
+    gap:4mm ${GAP_MM}mm; justify-content:center;
+  }
   .cell{ margin:0; break-inside:avoid }
   .plate{
     display:grid; place-items:center; width:${cellMm.toFixed(2)}mm; height:${cellMm.toFixed(2)}mm;
