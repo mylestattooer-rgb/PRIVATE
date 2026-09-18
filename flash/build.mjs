@@ -696,6 +696,21 @@ writeFileSync(OUT_PATH, page)
  */
 const SHEET_PATH = join(HERE, 'sheets.html')
 const sheetCols = Math.max(2, Number(config.sheetColumns) || 8)
+const _pg = { A4: [210, 297], A3: [297, 420], A2: [420, 594] }[config.sheetPageSize] || [297, 420]
+const _byWidth = (_pg[0] - 24 - (sheetCols - 1) * 3) / sheetCols
+
+/**
+ * Cell size is normally set by the column count, with as many rows fitting as
+ * fit. Setting `sheetRows` asks for a specific grid instead — say 3 across by 4
+ * down — which usually means the height, not the width, is the binding
+ * constraint, so the cell has to be the smaller of the two.
+ */
+const sheetRows = Number(config.sheetRows) || 0
+const _byHeight = sheetRows
+  ? (_pg[1] - 24 - 14) / sheetRows - 7.5
+  : Infinity
+const sheetCellMm = Math.min(_byWidth, _byHeight)
+const sheetRowsPerPage = sheetRows || Math.max(1, Math.floor((_pg[1] - 24 - 14) / (sheetCellMm + 7.5)))
 
 const sheetCells = designs
   .map((d) => {
@@ -729,7 +744,8 @@ const sheetPage = `<!doctype html>
   h1{ margin:0; font-size:22px; letter-spacing:-.02em }
   .sub{ margin:4px 0 0; font-size:11px; color:#555 }
   .sheet{
-    display:grid; grid-template-columns:repeat(${sheetCols}, 1fr); gap:4mm 3mm;
+    display:grid; grid-template-columns:repeat(${sheetCols}, ${sheetCellMm.toFixed(2)}mm);
+    gap:4mm 3mm; justify-content:center;
   }
   .cell{ margin:0; break-inside:avoid; page-break-inside:avoid; text-align:center }
   .plate{
@@ -742,9 +758,14 @@ const sheetPage = `<!doctype html>
     font-variant-numeric:tabular-nums;
   }
   .hint{
-    margin:0 0 6mm; padding:3mm 4mm; border:.4pt dashed #bbb; border-radius:2mm;
-    font-size:11px; color:#444;
+    margin:0 0 6mm; padding:4mm; border:.4pt dashed #bbb; border-radius:2mm;
+    font-size:11px; color:#444; display:flex; gap:4mm; align-items:center; flex-wrap:wrap;
   }
+  .printbtn{
+    padding:3mm 6mm; font:inherit; font-size:13px; font-weight:600; cursor:pointer;
+    background:#111; color:#fff; border:0; border-radius:2mm; white-space:nowrap;
+  }
+  .printbtn:hover{ background:#333 }
   @media print{ .hint{display:none} body{padding:0} }
 </style>
 </head>
@@ -753,7 +774,11 @@ const sheetPage = `<!doctype html>
     <h1>${esc(config.artist)} — Flash</h1>
     <p class="sub">${designs.length} design${designs.length === 1 ? '' : 's'} · quote the reference beneath a design to book it</p>
   </header>
-  <p class="hint">Print this page (⌘P / Ctrl+P) and choose “Save as PDF” for a flash book, or print it to pin up. Set your printer to ${esc(config.sheetPageSize || 'A3')} and enable background graphics. This box does not print.</p>
+  <div class="hint">
+    <button type="button" class="printbtn" onclick="window.print()">Print all ${designs.length} designs</button>
+    <span>Set your printer to <strong>${esc(config.sheetPageSize || 'A3')}</strong> and scale to <strong>100%</strong>.
+    ${designs.length} designs over ${Math.ceil(designs.length / (sheetCols * sheetRowsPerPage))} pages. This box does not print.</span>
+  </div>
   <main class="sheet">
 ${sheetCells}
   </main>
@@ -778,7 +803,7 @@ const MARGIN_MM = 12
 const GAP_MM = 3
 
 const [fullW] = PAGE_MM[config.sheetPageSize] || PAGE_MM.A3
-const cellMm = (fullW - 2 * MARGIN_MM - (sheetCols - 1) * GAP_MM) / sheetCols
+const cellMm = sheetCellMm
 
 const [a4W, a4H] = PAGE_MM.A4
 const testCols = Math.max(1, Math.floor((a4W - 2 * MARGIN_MM + GAP_MM) / (cellMm + GAP_MM)))
