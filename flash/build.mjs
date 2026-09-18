@@ -199,6 +199,19 @@ const hasRaster = designs.some((d) => !d.file.toLowerCase().endsWith('.svg'))
 
 /* -------------------------------------------------------------- the page */
 
+/**
+ * Dark palette. Declared once and used by both the prefers-color-scheme block and
+ * the explicit [data-theme="dark"] stamp, so a viewer's OS setting and the toggle
+ * can never resolve to different palettes.
+ * Cards are pure black so white negative space in a design inverts to exactly the
+ * card colour.
+ */
+const DARK_TOKENS = `
+      --bone:#131313; --ink:#F2EFE8; --muted:#8C877D; --line:#2A2A2A;
+      --card:#000000; --accent:#F2EFE8; --on-accent:#0E0E0E;
+      --shadow:none; --invert:1;
+    `
+
 const contactLinks = []
 if (config.instagram) {
   const handle = config.instagram.replace(/^@/, '')
@@ -258,11 +271,10 @@ const page = `<!doctype html>
        files with hardcoded black both behave identically. */
     --art-ink:#141414; --invert:0;
   }
-  :root[data-theme="dark"]{
-    --bone:#131313; --ink:#F2EFE8; --muted:#8C877D; --line:#2A2A2A;
-    --card:#000000; --accent:#F2EFE8; --on-accent:#0E0E0E;
-    --shadow:none; --invert:1;
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){ ${DARK_TOKENS} }
   }
+  :root[data-theme="dark"]{ ${DARK_TOKENS} }
   *{box-sizing:border-box}
   html{-webkit-text-size-adjust:100%}
   body{
@@ -286,7 +298,7 @@ const page = `<!doctype html>
   .muted{color:var(--muted)}
 
   .controls{
-    position:sticky; top:0; z-index:20; background:var(--bone);
+    position:sticky; top:env(safe-area-inset-top, 0px); z-index:20; background:var(--bone);
     border-bottom:1px solid var(--line); padding:12px 0;
   }
   .controls-inner{display:flex; flex-wrap:wrap; gap:10px; align-items:center}
@@ -459,16 +471,24 @@ ${designs.length ? cards : emptyState}
 
   /* ---- theme: remembered per visitor, falls back to their OS setting ---- */
   var themeBtn = document.getElementById('theme');
-  function applyTheme(t) {
-    document.documentElement.setAttribute('data-theme', t);
-    themeBtn.textContent = t === 'dark' ? 'Light' : 'Dark';
+  var root = document.documentElement;
+  // Three states to respect: an explicit stamp already on the page (a host may
+  // set one), this visitor's stored choice, else the OS preference — which CSS
+  // already handles, so leave the root unstamped and don't fight it.
+  function currentTheme() {
+    return root.getAttribute('data-theme') ||
+           (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
   }
+  function label() { themeBtn.textContent = currentTheme() === 'dark' ? 'Light' : 'Dark'; }
   var stored = null;
   try { stored = localStorage.getItem('flash-theme'); } catch (e) {}
-  applyTheme(stored || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+  if (stored && !root.getAttribute('data-theme')) root.setAttribute('data-theme', stored);
+  label();
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', label);
   themeBtn.addEventListener('click', function () {
-    var next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-    applyTheme(next);
+    var next = currentTheme() === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    label();
     try { localStorage.setItem('flash-theme', next); } catch (e) {}
   });
 
