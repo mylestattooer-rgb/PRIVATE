@@ -1,8 +1,12 @@
 {
   "ALIEN PEACE HAND.svg": {
     "ref": "BW-001",
-    "title": "ALIEN PEACE HAND",
-    "tags": [],
+    "title": "Alien Peace Hand",
+    "tags": [
+      "hand",
+      "alien",
+      "outline"
+    ],
     "size": "",
     "placement": "",
     "notes": "",
@@ -11,8 +15,12 @@
   },
   "Asset 3260.svg": {
     "ref": "BW-002",
-    "title": "Asset 3260",
-    "tags": [],
+    "title": "Day 1 Notepad",
+    "tags": [
+      "lettering",
+      "heart",
+      "heartbreak"
+    ],
     "size": "",
     "placement": "",
     "notes": "",
@@ -21,8 +29,12 @@
   },
   "Asset 3261.svg": {
     "ref": "BW-003",
-    "title": "Asset 3261",
-    "tags": [],
+    "title": "Skull Cherries",
+    "tags": [
+      "cherries",
+      "skull",
+      "fruit"
+    ],
     "size": "",
     "placement": "",
     "notes": "",
@@ -31,8 +43,11 @@
   },
   "Asset 3262.svg": {
     "ref": "BW-004",
-    "title": "Asset 3262",
-    "tags": [],
+    "title": "Escape Key Ladder",
+    "tags": [
+      "tech",
+      "surreal"
+    ],
     "size": "",
     "placement": "",
     "notes": "",
@@ -41,8 +56,11 @@
   },
   "Asset 3263.svg": {
     "ref": "BW-005",
-    "title": "Asset 3263",
-    "tags": [],
+    "title": "Welcome To Fabulous Nowhere",
+    "tags": [
+      "lettering",
+      "sign"
+    ],
     "size": "",
     "placement": "",
     "notes": "",
@@ -51,8 +69,11 @@
   },
   "Asset 3264.svg": {
     "ref": "BW-006",
-    "title": "Asset 3264",
-    "tags": [],
+    "title": "Chicken With Syringe",
+    "tags": [
+      "food",
+      "dark-humour"
+    ],
     "size": "",
     "placement": "",
     "notes": "",
@@ -61,8 +82,11 @@
   },
   "Asset 3265.svg": {
     "ref": "BW-007",
-    "title": "Asset 3265",
-    "tags": [],
+    "title": "Pencil Heart",
+    "tags": [
+      "heart",
+      "pencil"
+    ],
     "size": "",
     "placement": "",
     "notes": "",
@@ -71,8 +95,12 @@
   },
   "Asset 3266.svg": {
     "ref": "BW-008",
-    "title": "Asset 3266",
-    "tags": [],
+    "title": "CCTV Bird",
+    "tags": [
+      "bird",
+      "surveillance",
+      "surreal"
+    ],
     "size": "",
     "placement": "",
     "notes": "",
@@ -81,8 +109,12 @@
   },
   "Asset 3267.svg": {
     "ref": "BW-009",
-    "title": "Asset 3267",
-    "tags": [],
+    "title": "Crush On You Car Crash",
+    "tags": [
+      "car",
+      "lettering",
+      "dark-humour"
+    ],
     "size": "",
     "placement": "",
     "notes": "",
@@ -91,8 +123,11 @@
   },
   "Asset 3268.svg": {
     "ref": "BW-010",
-    "title": "Asset 3268",
-    "tags": [],
+    "title": "Floral Joint",
+    "tags": [
+      "smoking",
+      "floral"
+    ],
     "size": "",
     "placement": "",
     "notes": "",
@@ -101,8 +136,11 @@
   },
   "Asset 3269.svg": {
     "ref": "BW-011",
-    "title": "Asset 3269",
-    "tags": [],
+    "title": "Koi Fishbowl",
+    "tags": [
+      "fish",
+      "japanese"
+    ],
     "size": "",
     "placement": "",
     "notes": "",
@@ -111,8 +149,11 @@
   },
   "Asset 3270.svg": {
     "ref": "BW-012",
-    "title": "Asset 3270",
-    "tags": [],
+    "title": "Birdhouse And Knife",
+    "tags": [
+      "knife",
+      "bird"
+    ],
     "size": "",
     "placement": "",
     "notes": "",
@@ -121,8 +162,11 @@
   },
   "Asset 3271.svg": {
     "ref": "BW-013",
-    "title": "Asset 3271",
-    "tags": [],
+    "title": "Carousel Cow",
+    "tags": [
+      "fairground",
+      "cow"
+    ],
     "size": "",
     "placement": "",
     "notes": "",
@@ -141,8 +185,10 @@
   },
   "Asset 3273.svg": {
     "ref": "BW-015",
-    "title": "Asset 3273",
-    "tags": [],
+    "title": "TIME Lettering",
+    "tags": [
+      "lettering"
+    ],
     "size": "",
     "placement": "",
     "notes": "",
@@ -151,8 +197,10 @@
   },
   "Asset 3274.svg": {
     "ref": "BW-016",
-    "title": "Asset 3274",
-    "tags": [],
+    "title": "Three Flies",
+    "tags": [
+      "insect"
+    ],
     "size": "",
     "placement": "",
     "notes": "",
@@ -161,8 +209,11 @@
   },
   "Asset 3275.svg": {
     "ref": "BW-017",
-    "title": "Asset 3275",
-    "tags": [],
+    "title": "Campfire",
+    "tags": [
+      "fire",
+      "nature"
+    ],
     "size": "",
     "placement": "",
     "notes": "",
@@ -171,8 +222,11 @@
   },
   "Asset 3276.svg": {
     "ref": "BW-018",
-    "title": "Asset 3276",
-    "tags": [],
+    "title": "Two Roses",
+    "tags": [
+      "floral",
+      "rose"
+    ],
     "size": "",
     "placement": "",
     "notes": "",
@@ -181,8 +235,11 @@
   },
   "Asset 3277.svg": {
     "ref": "BW-019",
-    "title": "Asset 3277",
-    "tags": [],
+    "title": "Strawberry",
+    "tags": [
+      "fruit",
+      "solid"
+    ],
     "size": "",
     "placement": "",
     "notes": "",
@@ -191,8 +248,12 @@
   },
   "Asset 3278.svg": {
     "ref": "BW-020",
-    "title": "Asset 3278",
-    "tags": [],
+    "title": "Ghost Moon",
+    "tags": [
+      "ghost",
+      "moon",
+      "solid"
+    ],
     "size": "",
     "placement": "",
     "notes": "",
@@ -201,8 +262,11 @@
   },
   "Asset 3279.svg": {
     "ref": "BW-021",
-    "title": "Asset 3279",
-    "tags": [],
+    "title": "Burning Stamp",
+    "tags": [
+      "fire",
+      "stamp"
+    ],
     "size": "",
     "placement": "",
     "notes": "",
@@ -211,8 +275,11 @@
   },
   "Asset 3280.svg": {
     "ref": "BW-022",
-    "title": "Asset 3280",
-    "tags": [],
+    "title": "Problems Falling",
+    "tags": [
+      "lettering",
+      "hand"
+    ],
     "size": "",
     "placement": "",
     "notes": "",
@@ -221,8 +288,12 @@
   },
   "Asset 3281.svg": {
     "ref": "BW-023",
-    "title": "Asset 3281",
-    "tags": [],
+    "title": "Still Processing",
+    "tags": [
+      "lettering",
+      "head",
+      "tech"
+    ],
     "size": "",
     "placement": "",
     "notes": "",
@@ -231,8 +302,11 @@
   },
   "Asset 3282.svg": {
     "ref": "BW-024",
-    "title": "Asset 3282",
-    "tags": [],
+    "title": "Hundred Emoji",
+    "tags": [
+      "lettering",
+      "emoji"
+    ],
     "size": "",
     "placement": "",
     "notes": "",
@@ -241,8 +315,11 @@
   },
   "Asset 3283.svg": {
     "ref": "BW-025",
-    "title": "Asset 3283",
-    "tags": [],
+    "title": "No Trust",
+    "tags": [
+      "figures",
+      "lettering"
+    ],
     "size": "",
     "placement": "",
     "notes": "",
@@ -251,8 +328,12 @@
   },
   "Asset 3284.svg": {
     "ref": "BW-026",
-    "title": "Asset 3284",
-    "tags": [],
+    "title": "Steady And Ready",
+    "tags": [
+      "figure",
+      "lettering",
+      "skull"
+    ],
     "size": "",
     "placement": "",
     "notes": "",
@@ -261,8 +342,11 @@
   },
   "Asset 3285.svg": {
     "ref": "BW-027",
-    "title": "Asset 3285",
-    "tags": [],
+    "title": "Brain Question Mark",
+    "tags": [
+      "brain",
+      "surreal"
+    ],
     "size": "",
     "placement": "",
     "notes": "",
@@ -271,8 +355,12 @@
   },
   "Asset 3286.svg": {
     "ref": "BW-028",
-    "title": "Asset 3286",
-    "tags": [],
+    "title": "Social Media Cult",
+    "tags": [
+      "lettering",
+      "hands",
+      "heart"
+    ],
     "size": "",
     "placement": "",
     "notes": "",
@@ -281,8 +369,11 @@
   },
   "Asset 3287.svg": {
     "ref": "BW-029",
-    "title": "Asset 3287",
-    "tags": [],
+    "title": "Crossed Scissors",
+    "tags": [
+      "scissors",
+      "tools"
+    ],
     "size": "",
     "placement": "",
     "notes": "",
@@ -291,8 +382,12 @@
   },
   "Asset 3288.svg": {
     "ref": "BW-030",
-    "title": "Asset 3288",
-    "tags": [],
+    "title": "Fake Love",
+    "tags": [
+      "lettering",
+      "heart",
+      "solid"
+    ],
     "size": "",
     "placement": "",
     "notes": "",
@@ -301,8 +396,12 @@
   },
   "Asset 3289.svg": {
     "ref": "BW-031",
-    "title": "Asset 3289",
-    "tags": [],
+    "title": "Hannya Dagger",
+    "tags": [
+      "japanese",
+      "dagger",
+      "hannya"
+    ],
     "size": "",
     "placement": "",
     "notes": "",
@@ -311,8 +410,11 @@
   },
   "Asset 3290.svg": {
     "ref": "BW-032",
-    "title": "Asset 3290",
-    "tags": [],
+    "title": "Dragon Head",
+    "tags": [
+      "japanese",
+      "dragon"
+    ],
     "size": "",
     "placement": "",
     "notes": "",
@@ -321,8 +423,12 @@
   },
   "Asset 3291.svg": {
     "ref": "BW-033",
-    "title": "Asset 3291",
-    "tags": [],
+    "title": "Hannya Dagger II",
+    "tags": [
+      "japanese",
+      "dagger",
+      "hannya"
+    ],
     "size": "",
     "placement": "",
     "notes": "",
@@ -331,8 +437,12 @@
   },
   "Asset 3292.svg": {
     "ref": "BW-034",
-    "title": "Asset 3292",
-    "tags": [],
+    "title": "Hannya Dagger III",
+    "tags": [
+      "japanese",
+      "dagger",
+      "hannya"
+    ],
     "size": "",
     "placement": "",
     "notes": "",
@@ -341,8 +451,12 @@
   },
   "Asset 3293.svg": {
     "ref": "BW-035",
-    "title": "Asset 3293",
-    "tags": [],
+    "title": "Hannya Dagger IV",
+    "tags": [
+      "japanese",
+      "dagger",
+      "hannya"
+    ],
     "size": "",
     "placement": "",
     "notes": "",
@@ -351,8 +465,12 @@
   },
   "Asset 3294.svg": {
     "ref": "BW-036",
-    "title": "Asset 3294",
-    "tags": [],
+    "title": "Flaming Dragon",
+    "tags": [
+      "japanese",
+      "dragon",
+      "fire"
+    ],
     "size": "",
     "placement": "",
     "notes": "",
@@ -361,8 +479,12 @@
   },
   "Asset 3295.svg": {
     "ref": "BW-037",
-    "title": "Asset 3295",
-    "tags": [],
+    "title": "Flaming Dragon II",
+    "tags": [
+      "japanese",
+      "dragon",
+      "fire"
+    ],
     "size": "",
     "placement": "",
     "notes": "",
@@ -371,8 +493,11 @@
   },
   "Asset 3296.svg": {
     "ref": "BW-038",
-    "title": "Asset 3296",
-    "tags": [],
+    "title": "Chrysanthemum",
+    "tags": [
+      "floral",
+      "japanese"
+    ],
     "size": "",
     "placement": "",
     "notes": "",
@@ -381,8 +506,11 @@
   },
   "Asset 3297.svg": {
     "ref": "BW-039",
-    "title": "Asset 3297",
-    "tags": [],
+    "title": "Summer 21 Postcard",
+    "tags": [
+      "lettering",
+      "postcard"
+    ],
     "size": "",
     "placement": "",
     "notes": "",
@@ -391,8 +519,10 @@
   },
   "Asset 3298.svg": {
     "ref": "BW-040",
-    "title": "Asset 3298",
-    "tags": [],
+    "title": "Smiley Face",
+    "tags": [
+      "smiley"
+    ],
     "size": "",
     "placement": "",
     "notes": "",
@@ -401,8 +531,10 @@
   },
   "Asset 3299.svg": {
     "ref": "BW-041",
-    "title": "Asset 3299",
-    "tags": [],
+    "title": "Toilet Roll",
+    "tags": [
+      "humour"
+    ],
     "size": "",
     "placement": "",
     "notes": "",
@@ -411,8 +543,11 @@
   },
   "Asset 3300.svg": {
     "ref": "BW-042",
-    "title": "Asset 3300",
-    "tags": [],
+    "title": "Fuck Your Rules Scroll",
+    "tags": [
+      "lettering",
+      "scroll"
+    ],
     "size": "",
     "placement": "",
     "notes": "",
