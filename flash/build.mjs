@@ -84,6 +84,12 @@ function prepareSvg(raw, slug) {
 
   if (!/^<svg[\s>]/i.test(svg)) return null
 
+  // An Illustrator export of an empty artboard is a valid but blank SVG. It would
+  // otherwise take a reference and show as an empty card, so treat it as no art.
+  if (!/<(path|circle|rect|ellipse|polygon|polyline|line|text|image|use)[\s/>]/i.test(svg)) {
+    return null
+  }
+
   // Let CSS own the size; keep viewBox so it scales cleanly at any resolution.
   svg = svg.replace(/^<svg([^>]*)>/i, (_, attrs) => {
     let a = attrs.replace(/\s(width|height)="[^"]*"/gi, '')
@@ -192,12 +198,18 @@ for (const file of files) {
   const ext = extname(file).toLowerCase()
   let markup
 
-  if (ext === '.svg' && inlineSvg) {
-    markup = prepareSvg(readFileSync(join(DESIGNS_DIR, file), 'utf8'), slug)
-    if (!markup) {
-      console.warn(`  ! ${file} doesn't look like an SVG — skipped`)
+  if (ext === '.svg') {
+    // Validate every SVG whichever way it will be rendered — a blank or broken
+    // file must not take a reference and show as an empty card just because
+    // this catalogue is large enough to reference rather than inline.
+    const prepared = prepareSvg(readFileSync(join(DESIGNS_DIR, file), 'utf8'), slug)
+    if (!prepared) {
+      console.warn(`  ! ${file} is empty or not an SVG — skipped`)
       continue
     }
+    markup = inlineSvg
+      ? prepared
+      : `<img class="art" loading="lazy" decoding="async" src="designs/${encodeURIComponent(file)}" alt="${esc(meta.title)}">`
   } else {
     markup = `<img class="art" loading="lazy" decoding="async" src="designs/${encodeURIComponent(file)}" alt="${esc(meta.title)}">`
   }
@@ -354,7 +366,12 @@ const page = `<!doctype html>
     color:var(--art-ink); background:var(--plate); border-radius:10px; padding:14px;
   }
   .art{
-    width:100%; height:100%; max-height:100%; object-fit:contain;
+    width:100%; height:100%; object-fit:contain;
+    /* A grid item will not shrink below its content's intrinsic size unless told
+       to, which lets a tall design stretch its own plate and knock every card in
+       the row out of alignment. These let the plate stay square and the artwork
+       letterbox inside it. */
+    min-width:0; min-height:0;
   }
   .meta .ref{
     font-size:11px; letter-spacing:.14em; color:var(--muted);
