@@ -29,6 +29,7 @@ const DEFAULT_CONFIG = {
   email: '',
   instagram: '',
   refPrefix: 'BW',
+  inlineLimit: 120,
   intro:
     'Each piece below is available to tattoo. Designs are drawn once and tattooed once unless noted as repeatable. Tap any design for details, then send me its reference number.',
   footnote: 'Deposits are non-refundable and come off the final price.',
@@ -169,6 +170,19 @@ writeFileSync(LEDGER_PATH, JSON.stringify(ledger, null, 2) + '\n')
 
 /* ------------------------------------------------------------ the designs */
 
+/**
+ * Two strategies, chosen by size.
+ *
+ * Inlining every SVG makes a catalogue that is one portable file you can email,
+ * and it works offline — ideal for a flash sheet of a few dozen designs. But the
+ * whole page must download before anything appears, so past a certain count that
+ * becomes a multi-megabyte wait on mobile data for a client who will look at the
+ * first twenty. Beyond `inlineLimit`, designs are referenced and lazily loaded
+ * instead: the browser fetches only what scrolls into view.
+ */
+const visible = files.filter((f) => !ledger[f].hidden)
+const inlineSvg = visible.length <= (config.inlineLimit || 120)
+
 const designs = []
 for (const file of files) {
   const meta = ledger[file]
@@ -178,7 +192,7 @@ for (const file of files) {
   const ext = extname(file).toLowerCase()
   let markup
 
-  if (ext === '.svg') {
+  if (ext === '.svg' && inlineSvg) {
     markup = prepareSvg(readFileSync(join(DESIGNS_DIR, file), 'utf8'), slug)
     if (!markup) {
       console.warn(`  ! ${file} doesn't look like an SVG — skipped`)
@@ -625,5 +639,12 @@ console.log(`  Flash catalogue built → ${OUT_PATH.replace(HERE, 'flash')}`)
 console.log(`  ${designs.length} design${designs.length === 1 ? '' : 's'} on the page` +
   (added ? `, ${added} new` : '') + (retired ? `, ${retired} retired` : ''))
 if (added) console.log(`  New designs were given references in designs.json — add titles and tags there.`)
-if (hasRaster) console.log(`  Note: this page uses PNG/JPG designs, so keep designs/ next to index.html when you share it.`)
+if (inlineSvg && !hasRaster) {
+  console.log(`  Self-contained: index.html embeds every design and works on its own.`)
+} else if (!inlineSvg) {
+  console.log(`  ${visible.length} designs is past the inline limit (${config.inlineLimit || 120}), so they are`)
+  console.log(`  referenced and lazy-loaded. Keep designs/ next to index.html when you share it.`)
+} else {
+  console.log(`  Note: this page uses PNG/JPG designs, so keep designs/ next to index.html when you share it.`)
+}
 console.log('')
