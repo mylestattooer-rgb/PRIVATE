@@ -1,0 +1,21 @@
+{
+  "useMarkdownLinks": true,
+  "newLinkFormat": "relative",
+  "alwaysUpdateLinks": true,
+  "showUnsupportedFiles": false,
+  "readableLineLength": true,
+  "strictLineBreaks": false,
+  "showFrontmatter": true,
+  "attachmentFolderPath": "assets",
+  "userIgnoreFilters": [
+    "node_modules/",
+    ".next/",
+    "out/",
+    "build/",
+    "coverage/",
+    ".git/",
+    ".vercel/",
+    "app/generated/",
+    "public/"
+  ]
+}

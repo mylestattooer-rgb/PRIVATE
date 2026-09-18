@@ -1,3 +1,11 @@
+---
+title: Trading School OS — Start Here
+doc_type: overview
+status: living
+updated: 2026-08-14
+tags: [doc/overview, status/living]
+---
+
 # Trading School OS
 
 An AI-powered operating system for a day-trading education business: an admin side (student
@@ -6,8 +14,10 @@ quizzes with XP/levels/achievements, a trading journal with AI-generated insight
 grounded in the school's own methodology, and Chart Lab — upload a chart, the AI asks Socratic
 follow-up questions instead of grading).
 
-Phases 0-5 of a larger vision are built (see `PROJECT_STATE.md` for the full breakdown of
-what's WORKING / MOCKED / NOT YET IMPLEMENTED, and `ROADMAP.md` for what's next). No automated
+**All project documentation is indexed in [`DOCS_INDEX.md`](DOCS_INDEX.md)** — start there.
+
+Phases 0-5 of a larger vision are built (see [`PROJECT_STATE.md`](PROJECT_STATE.md) for the full breakdown of
+what's WORKING / MOCKED / NOT YET IMPLEMENTED, and [`ROADMAP.md`](ROADMAP.md) for what's next). No automated
 trade execution exists or is planned — this is an educational/operational tool.
 
 ## Stack
@@ -39,7 +49,7 @@ Open http://localhost:3000 — you'll be redirected to `/login`.
 **Demo student login** (`/student/login`, separate session from admin): any ACTIVE seeded
 student's email (e.g. `ava.whitfield@example.com`) / `ChangeMe123!` (`STUDENT_SEED_PASSWORD`
 if set, same default otherwise). TRIAL/PAUSED/LEAD demo students exist in the CRM but
-deliberately can't log in — see `PROJECT_STATE.md`.
+deliberately can't log in — see [`PROJECT_STATE.md`](PROJECT_STATE.md).
 
 To re-seed at any time: `npm run db:seed`. To inspect the database visually: `npm run db:studio`.
 To run the test suite: `npm test` (integration tests use a separate `prisma/test.db`, never
@@ -47,7 +57,7 @@ To run the test suite: `npm test` (integration tests use a separate `prisma/test
 
 ## What's WORKING vs MOCKED vs NOT YET IMPLEMENTED
 
-See `PROJECT_STATE.md` for the full breakdown. Short version: everything built through Phase 5
+See [`PROJECT_STATE.md`](PROJECT_STATE.md) for the full breakdown. Short version: everything built through Phase 5
 is real (live database, real retrieval, real auth, real XP/journal/quiz grading) — the only
 mocked piece is AI *generation* (not retrieval) when `ANTHROPIC_API_KEY` is unset, and that's
 labeled in the UI itself, not just in docs. Not yet built: trading simulator, community,
@@ -134,3 +144,29 @@ See `.env.example`. Key ones:
 `.github/workflows/ci.yml` runs lint, `tsc --noEmit`, and the test suite on every push/PR to
 `main` — see that file's own header comment for why it lives inside this repo rather than a
 parent monorepo's `.github/`.
+
+## Reading the docs in Obsidian
+
+The repo root doubles as an [Obsidian](https://obsidian.md) vault, so the same markdown that
+renders on GitHub is browsable, searchable and linkable offline — no export, no copy that can
+drift out of date.
+
+**Open it:** Obsidian → *Open folder as vault* → select this repository's root folder. Trust
+the author when prompted (that's what loads the shared config in `.obsidian/`).
+
+Then open [`DOCS_INDEX.md`](DOCS_INDEX.md) and work outwards from there.
+
+What the committed `.obsidian/` config sets up for you:
+
+- **Markdown links, not wikilinks** — every cross-document link is standard
+  `[text](FILE.md)`, so it stays clickable in Obsidian, on GitHub, and in any plain editor.
+  Nothing is written in a syntax only one tool understands.
+- **Generated output is excluded** — `node_modules/`, `.next/`, `build/`, `coverage/` and
+  friends are filtered out of search and the graph, so results are project docs only.
+- **Graph view is colour-coded by status** — `PROJECT_STATE.md` is highlighted as the hub,
+  and docs are tinted by whether they're built, mixed, or still a proposal.
+- **Frontmatter is visible** — each doc's `title` / `status` / `updated` / `tags` show in the
+  properties panel, and GitHub renders the same block as a table.
+
+Your personal Obsidian state (window layout, plugin data, hotkeys, graph zoom) is gitignored,
+so opening the vault never produces commit noise. Only the shared config is tracked.

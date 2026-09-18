@@ -1,3 +1,11 @@
+---
+title: Security — Enforced Today vs Planned
+doc_type: reference
+status: mixed
+updated: 2026-08-12
+tags: [doc/reference, doc/security, status/mixed]
+---
+
 # SECURITY — Trading X
 
 Status: mixed — section 1 describes what's actually enforced today; section 2 is Phase 0
@@ -35,7 +43,7 @@ Verified via a full in-browser pass: unauthenticated `/admin` and `/student` bot
 redirect (307) to their login pages, and an authenticated admin's mutating Server Action
 (`createStudent`) still works end-to-end.
 
-**Lesson for future sessions**: this is exactly the kind of thing `AGENTS.md`'s "this is NOT the
+**Lesson for future sessions**: this is exactly the kind of thing [`AGENTS.md`](AGENTS.md)'s "this is NOT the
 Next.js you know" warning is about — a unit test mocking `next/navigation`'s `redirect()` would
 have passed and hidden this, since the mock throws correctly even though the real runtime doesn't
 propagate it the same way from a cross-module call. Caught only by the mandatory in-browser
@@ -49,7 +57,7 @@ re-verifying in a real browser first.
   16 redirect quirk" above for why it's inline rather than a shared cross-module guard), plus
   `requireAdminApi()` for Route Handlers, which returns null → caller sends 401. Passwords hashed
   with `bcryptjs`. Student auth now exists too (Phase 1, same pattern, separate cookie) — see
-  `ARCHITECTURE.md` and section 2 below for what's still pending on top of it.
+  [`ARCHITECTURE.md`](ARCHITECTURE.md) and section 2 below for what's still pending on top of it.
 - **Audit logging**: every login, AI query/response, and student/document mutation writes an
   `AuditLog` row (actor, action, human-readable detail, JSON metadata). This is a real, append-only
   trail today, not aspirational.
@@ -60,7 +68,7 @@ re-verifying in a real browser first.
   exist.
 - **Human-approval gate**: the `Approval` schema exists for sensitive AI-proposed actions, per the
   root `AI OPERATING MANUAL.md`'s general "AI proposes, human approves" pattern — currently unused
-  since no automation feature produces requests yet (see `PROJECT_STATE.md`).
+  since no automation feature produces requests yet (see [`PROJECT_STATE.md`](PROJECT_STATE.md)).
 - **Sample content labeling**: `Document.isSample`/`needsReview` prevent placeholder or unconfirmed
   content from being presented as real methodology — a data-integrity control that doubles as a
   security one, since it prevents the AI from confidently asserting things nobody has verified.
@@ -78,7 +86,7 @@ student AI Tutor (Phase 4). The last one caught a real bug: the chat route origi
 `findUniqueOrThrow` for an existing-conversation lookup scoped by studentId — isolation itself was
 never broken (a mismatched ID correctly matched nothing), but the unhandled exception on that miss
 produced a raw 500 instead of a clean 404. Fixed via `findFirst` + explicit not-found response;
-full writeup in `AI_ARCHITECTURE.md`. Verified in-browser for both journal and chat: a second
+full writeup in [`AI_ARCHITECTURE.md`](AI_ARCHITECTURE.md). Verified in-browser for both journal and chat: a second
 student's view is empty, and a direct hijack attempt (real `fetch()` with another student's
 resource ID) is correctly rejected with no data returned.
 
@@ -89,7 +97,7 @@ and `POST /api/chat` per-IP with an in-memory sliding window (10/min for the two
 30/min for chat), returning 429 with `Retry-After` once exceeded. Verified in-browser: 10 rapid
 login attempts succeed through to the app, the 11th+ are blocked, and the page doesn't break when
 blocked. Deliberately in-memory and per-process — matches this app's current single-instance
-SQLite architecture (see `ARCHITECTURE.md`); revisit with a shared store (Redis, etc.) alongside
+SQLite architecture (see [`ARCHITECTURE.md`](ARCHITECTURE.md)); revisit with a shared store (Redis, etc.) alongside
 the Postgres/multi-instance migration, since a second instance would keep independent counters.
 
 ### 2.3 Upload validation (Phase 5, Chart Lab) — DONE
@@ -98,12 +106,12 @@ Chart-image uploads (brief §9) are validated in `createChartExerciseAction`
 (`app/admin/chart-lab/actions.ts`): MIME type allowlist (png/jpeg/webp only), 5MB size cap, both
 checked server-side before the file is ever touched. Image content is stored and treated as
 opaque — the raw bytes become a `data:` URL in the DB and are never parsed as executable; in
-real-provider mode the image isn't sent to the AI at all (see `AI_ARCHITECTURE.md`'s Chart Lab
+real-provider mode the image isn't sent to the AI at all (see [`AI_ARCHITECTURE.md`](AI_ARCHITECTURE.md)'s Chart Lab
 section), so there's currently no path for image content to influence the AI system prompt.
 
 ### 2.4 AI-as-untrusted-subsystem, applied concretely
 
-Full reasoning in `AI_ARCHITECTURE.md`; the security-specific requirements: the AI never receives
+Full reasoning in [`AI_ARCHITECTURE.md`](AI_ARCHITECTURE.md); the security-specific requirements: the AI never receives
 raw database access (reads go through retrieval/citation interfaces only); uploaded documents and
 community posts are untrusted input that cannot alter system instructions no matter how they're
 phrased (same prompt-injection stance as the root `SECURITY.md`, applied to a new input channel);
@@ -122,7 +130,7 @@ would be a revenue leak.
 
 Brief §36: data export, account deletion, AI opt-out, journal privacy (private by default — never
 automatically promoted to community content, matching the trust-level design in
-`AI_ARCHITECTURE.md`). UK GDPR applies once real student data is collected — this needs to be in
+[`AI_ARCHITECTURE.md`](AI_ARCHITECTURE.md)). UK GDPR applies once real student data is collected — this needs to be in
 place before any non-demo student data exists, not retrofitted after.
 
 ## What this document deliberately does not do

@@ -1,12 +1,20 @@
+---
+title: Curriculum System — Versioning, Prerequisites, Concepts
+doc_type: reference
+status: built
+updated: 2026-08-10
+tags: [doc/reference, doc/curriculum, status/built]
+---
+
 # CURRICULUM_SYSTEM — Trading X
 
 Status: mostly built. Versioning, prerequisites (soft), and lightweight concept tagging are real
-— see `DATABASE.md` §2.2 and `app/admin/curriculum/` for the admin authoring UI, verified
+— see [`DATABASE.md`](DATABASE.md) §2.2 and `app/admin/curriculum/` for the admin authoring UI, verified
 end-to-end in-browser (create → review → publish → edit-creates-new-version-without-disturbing-
 the-published-one). Adaptive sequencing and concept mastery tracking remain spec-only (Phase 2/9).
 No real curriculum *content* exists anywhere on the machine to migrate — confirmed by filesystem
 search (repo, Desktop, Documents, Downloads) during the methodology-extraction work in
-`PROJECT_STATE.md`, and re-confirmed by this session's search for "Trading X"/"Skool" branding (no
+[`PROJECT_STATE.md`](PROJECT_STATE.md), and re-confirmed by this session's search for "Trading X"/"Skool" branding (no
 hits outside unrelated EA Box docs) — the system is real, the content in it is still placeholder.
 
 ## Why this needs its own doc
@@ -18,7 +26,7 @@ lesson 12 yet" depends on more than "did they finish lesson 11."
 
 ## Content structure
 
-`Course` → `Module` → `Lesson`, with `Lesson` as the versioned unit (see `DATABASE.md` §2.2).
+`Course` → `Module` → `Lesson`, with `Lesson` as the versioned unit (see [`DATABASE.md`](DATABASE.md) §2.2).
 Lessons support multiple content types (text, images, diagrams, video, audio, interactive charts,
 examples, case studies, quizzes, exercises, downloadable resources, AI discussion) — the schema
 should store content as typed blocks, not a single markdown blob, once content beyond
@@ -31,7 +39,7 @@ markdown renderer (`marked`, already in use) as its first content type.
 Per brief §29. A `Lesson` has a `status` and a `version` number; editing a published lesson creates
 a new version rather than mutating the published one in place. Students in progress against version
 N keep referencing version N's content and any AI citations tied to it (see
-`AI_ARCHITECTURE.md`'s "content versioning and AI knowledge" section) until they explicitly
+[`AI_ARCHITECTURE.md`](AI_ARCHITECTURE.md)'s "content versioning and AI knowledge" section) until they explicitly
 re-engage with the lesson, at which point they see the current published version. This prevents
 the failure mode brief §29 is guarding against: an admin fixing a typo silently invalidating a
 week's worth of already-completed student progress records or AI conversation history.
@@ -58,7 +66,7 @@ admin-editable list (name, description); Lessons/Quizzes/ChartExercises each tag
 they teach or test via a join table. This is already enough to answer "what concepts has this
 student been exposed to" and "what concepts does this quiz question test" — the two things
 `ConceptMastery` tracking actually needs. Concept-to-concept *relationships* (the graph edges)
-get added in Phase 9 once there's enough real data for edges to mean something, per `ROADMAP.md`.
+get added in Phase 9 once there's enough real data for edges to mean something, per [`ROADMAP.md`](ROADMAP.md).
 
 ## Concept mastery states
 
@@ -70,7 +78,7 @@ NOT_INTRODUCED → INTRODUCED → LEARNING → UNDERSTOOD → APPLIED → CONSIS
 
 State transitions are driven by evidence (quiz results, chart-exercise results, simulator
 decisions tagged to that concept) evaluated by deterministic rules, not AI judgment (see
-`AI_ARCHITECTURE.md`'s determinism boundary) — e.g. "3 consecutive correct chart-exercise answers
+[`AI_ARCHITECTURE.md`](AI_ARCHITECTURE.md)'s determinism boundary) — e.g. "3 consecutive correct chart-exercise answers
 tagged to this concept" is a rule a test can verify; "the AI feels the student understands this
 now" is not. Confidence decays when evidence is old — a `lastEvidenceAt` timestamp plus a
 scheduled/on-read decay check, exact decay curve to be tuned once there's real usage data rather
@@ -81,7 +89,7 @@ than guessed at now.
 Brief §7's full loop (student struggles → system provides alternate explanation → counterexamples
 → exercises → retest → track improvement) requires the concept graph, mastery tracking, and a
 meaningful bank of alternate explanations/examples per concept to already exist. This is placed in
-Phase 9 (`ROADMAP.md`) deliberately — building adaptive branching logic against a curriculum that
+Phase 9 ([`ROADMAP.md`](ROADMAP.md)) deliberately — building adaptive branching logic against a curriculum that
 doesn't exist yet would be designing in a vacuum.
 
 ## Admin authoring — DONE
@@ -96,5 +104,5 @@ One UI note for future browser-based testing in this environment: the lesson row
 `<details>`/`<summary>` elements, collapsed by default. The `computer` tool's coordinate-based
 clicks were unreliable against buttons inside a just-expanded `<details>` panel (silently no-op'd
 more than once during verification) — falling back to a JS-dispatched `.click()` on the actual
-DOM button (already the documented workaround in `PROJECT_STATE.md` for this tool's known
+DOM button (already the documented workaround in [`PROJECT_STATE.md`](PROJECT_STATE.md) for this tool's known
 click flakiness) worked every time and is the reliable way to test this page.

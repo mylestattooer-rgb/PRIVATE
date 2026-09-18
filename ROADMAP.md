@@ -1,15 +1,23 @@
+---
+title: Roadmap — Phases 0-10
+doc_type: planning
+status: discovery
+updated: 2026-08-14
+tags: [doc/planning, status/discovery]
+---
+
 # ROADMAP — Trading X
 
 Status: Phase 0 (discovery) output. This reconciles the master brief's Phase 0-10 sequence against
 what's actually built, rather than re-numbering as if starting from zero. **Read this file first**
 in any future session to find current status — it will go stale fast as phases progress; update it
-in the same session as any milestone that changes phase status, per the root `CLAUDE.md` docs
+in the same session as any milestone that changes phase status, per the root [`CLAUDE.md`](CLAUDE.md) docs
 policy.
 
 ## Phase 0 — Discovery: DONE (this session)
 
-Inventory of existing system, architecture decisions, and this doc set (`PRODUCT_SPEC.md`,
-`ARCHITECTURE.md`, `DATABASE.md`, `AI_ARCHITECTURE.md`, `SECURITY.md`, `CURRICULUM_SYSTEM.md`,
+Inventory of existing system, architecture decisions, and this doc set ([`PRODUCT_SPEC.md`](PRODUCT_SPEC.md),
+[`ARCHITECTURE.md`](ARCHITECTURE.md), [`DATABASE.md`](DATABASE.md), [`AI_ARCHITECTURE.md`](AI_ARCHITECTURE.md), [`SECURITY.md`](SECURITY.md), [`CURRICULUM_SYSTEM.md`](CURRICULUM_SYSTEM.md),
 `ROADMAP.md`). No application code changed in this phase.
 
 ## Phase 1 — Foundation: DONE
@@ -20,10 +28,10 @@ lessons, progress tracking, basic dashboard, testing, deployment pipeline.
 | Item | Status |
 |---|---|
 | Database | **DONE** — Prisma schema, migrations, SQLite dev |
-| Admin auth | **DONE** — signed-cookie JWT (fixed a real redirect bug along the way, see `SECURITY.md`) |
+| Admin auth | **DONE** — signed-cookie JWT (fixed a real redirect bug along the way, see [`SECURITY.md`](SECURITY.md)) |
 | Admin foundations | **DONE** — dashboard, students, knowledge, chat, audit log |
 | Basic dashboard | **DONE** — admin-side; student side has a proof-of-pattern stub (`/student`) |
-| Modules / progress tracking | **DONE**, but flat (no versioning/prerequisites — see `CURRICULUM_SYSTEM.md`) |
+| Modules / progress tracking | **DONE**, but flat (no versioning/prerequisites — see [`CURRICULUM_SYSTEM.md`](CURRICULUM_SYSTEM.md)) |
 | **Student auth** | **DONE** — `/student/login`, separate session cookie, `Student.passwordHash`/`authEnabledAt` |
 | **Entitlements** | **DONE** — `app/lib/domains/entitlements/`, one capability (`USE_AI_TUTOR`) wired end-to-end |
 | **Testing** | **DONE (minimal)** — vitest, 14 tests (retrieval TF-IDF scoring, auth session round-trips), wired to `npm test` |
@@ -33,11 +41,11 @@ lessons, progress tracking, basic dashboard, testing, deployment pipeline.
 **A real bug was found and fixed while building this** (not a pre-planned task): `redirect()`
 called from a cross-module auth helper silently failed to redirect in this Next.js 16.3.0 +
 Turbopack setup — caught only by in-browser verification, not by unit tests. Full writeup in
-`SECURITY.md`. Worth flagging here because it affected the *existing* admin auth too, not just the
+[`SECURITY.md`](SECURITY.md). Worth flagging here because it affected the *existing* admin auth too, not just the
 new student code — a previously-undiscovered gap in what "Phase 1 admin MVP, verified in-browser"
 actually covered.
 
-Rate limiting (`SECURITY.md` §2.2) and curriculum versioning both landed after this table was
+Rate limiting ([`SECURITY.md`](SECURITY.md) §2.2) and curriculum versioning both landed after this table was
 first written — every brief-listed Phase 1 item is now DONE. `app/lib/domains/learning/` holds the
 lesson-versioning logic (`status.ts` pure state machine, unit-tested; `lessons.ts` the DB half);
 22 tests total now (up from 14).
@@ -76,7 +84,7 @@ pure (grading equality, XP summation, level lookup, achievement conditions, mast
 `JournalTrade` writable from `/student/journal` (create/delete, student-data-isolated); deterministic
 stats (win rate, avg R, best/worst setup tag, most common mistake — `app/lib/domains/journal/stats.ts`,
 pure/unit-tested); `AiInsight` generation gated at `MIN_TRADES_FOR_INSIGHT = 5`, evidence-linked to
-the exact trades it summarizes (`DATABASE.md` §2.4 has the full writeup, including why the insight
+the exact trades it summarizes ([`DATABASE.md`](DATABASE.md) §2.4 has the full writeup, including why the insight
 text is deterministic-template today rather than routed through the AI provider).
 
 Verified end-to-end in-browser: seeded 6 sample trades + 1 generated insight for one student;
@@ -94,9 +102,9 @@ manual/simulator/broker — only manual exists, simulator doesn't exist until Ph
 | Knowledge base, retrieval, citations | **DONE** (Phase 0) |
 | Trust levels (A-D) | **DONE** — `Document.trustLevel`, both providers factor it in, citation UI shows it, admin sets it from `/admin/knowledge` |
 | Student-facing tutor UI | **DONE** — `/student/ai-tutor`, entitlement-gated, own Route Handler, own conversation scope |
-| AI security hardening (`SECURITY.md` §2.1) | **DONE** — student chat isolated at the query layer; a real isolation-adjacent bug (500 instead of 404 on a mismatched conversation ID) found and fixed during verification |
+| AI security hardening ([`SECURITY.md`](SECURITY.md) §2.1) | **DONE** — student chat isolated at the query layer; a real isolation-adjacent bug (500 instead of 404 on a mismatched conversation ID) found and fixed during verification |
 | Socratic questioning | **DONE** — landed as part of Phase 5 (Chart Lab), see below |
-| Uncertainty categories (FACT/OBSERVATION/INTERPRETATION/HYPOTHESIS/TRADING_X_RULE/UNKNOWN) | **NOT STARTED** — `AI_ARCHITECTURE.md`'s planned tagging scheme isn't wired into Chart Lab's Socratic responses yet |
+| Uncertainty categories (FACT/OBSERVATION/INTERPRETATION/HYPOTHESIS/TRADING_X_RULE/UNKNOWN) | **NOT STARTED** — [`AI_ARCHITECTURE.md`](AI_ARCHITECTURE.md)'s planned tagging scheme isn't wired into Chart Lab's Socratic responses yet |
 
 Verified in-browser: student asked a real question, got a grounded answer with trust-level-labeled
 citations; a second student's chat history was empty; a direct hijack attempt against another
@@ -112,7 +120,7 @@ student's conversation ID was cleanly rejected (404, no data returned) after the
 | Annotations / drawing on the chart | **NOT BUILT** — student response is free-text only, no chart-marking tool |
 | AI actually seeing the chart image | **NOT BUILT** — even in real-provider mode, `socraticFollowUp()` sends only the prompt text and the student's typed response to Claude, never the image itself; the follow-up is grounded in what the student wrote, not independent chart analysis |
 | Level-tuned scaffolding (TEACHER→COACH→QUESTIONER→REVIEWER) | **NOT BUILT** — question selection is `priorAnswerCount % bank.length`, not keyed to student `Level` |
-| Entitlement gate | **DONE** (2026-08-13) — `USE_CHART_LAB` capability, gated the same way as `USE_AI_TUTOR`: page-level upsell + Server Action-level defense in depth, see `PROJECT_STATE.md` "Chart Lab" |
+| Entitlement gate | **DONE** (2026-08-13) — `USE_CHART_LAB` capability, gated the same way as `USE_AI_TUTOR`: page-level upsell + Server Action-level defense in depth, see [`PROJECT_STATE.md`](PROJECT_STATE.md) "Chart Lab" |
 
 Verified in-browser 2026-08-12: admin view renders a seeded exercise with its uploaded image and
 answer count; student view shows a prior real answer, the AI's follow-up question, and the
@@ -122,20 +130,20 @@ student's reply to it, all correctly persisted and rendered on reload. 4 unit te
 concept tagging closed out (table above), plus a real integration-test suite for the Server
 Action-facing domain functions (`app/lib/domains/chartlab/exercises.test.ts`, 9 tests against a real
 Prisma-backed test DB) — found and fixed a `findUniqueOrThrow`-on-untrusted-ID bug along the way
-(same class as the AI Tutor route's 2026-08-11 fix). Full suite now 60/60 — see `PROJECT_STATE.md`
+(same class as the AI Tutor route's 2026-08-11 fix). Full suite now 60/60 — see [`PROJECT_STATE.md`](PROJECT_STATE.md)
 "Chart Lab" and "Test infrastructure" for detail. Only remaining gap: the AI seeing the actual chart
 image, left open as a product decision.
 
 ## Phase 6 — Simulator: NOT STARTED
 
 Historical data engine, replay, orders, risk metrics, scenario training. The most infrastructure-
-heavy phase (needs a real historical market-data source, per `ARCHITECTURE.md`'s note on keeping
+heavy phase (needs a real historical market-data source, per [`ARCHITECTURE.md`](ARCHITECTURE.md)'s note on keeping
 `SimulatorSession` provider-agnostic) — do not start this before Phases 1-5 are stable, since it's
 the single most expensive phase to build twice.
 
 ## Phase 7 — Prop-firm preparation: NOT STARTED
 
-Configurable rule profiles (`PropRuleProfile`, `DATABASE.md` §2.7), prop education content
+Configurable rule profiles (`PropRuleProfile`, [`DATABASE.md`](DATABASE.md) §2.7), prop education content
 (depends on Phase 2's curriculum system being real), evaluation simulator (depends on Phase 6).
 
 ## Phase 8 — Community: NOT STARTED
@@ -146,7 +154,7 @@ education/simulation/journal core should be solid first.
 
 ## Phase 9 — Intelligence: NOT STARTED
 
-Adaptive curriculum (`CURRICULUM_SYSTEM.md`'s deferred adaptive-sequencing section), full concept
+Adaptive curriculum ([`CURRICULUM_SYSTEM.md`](CURRICULUM_SYSTEM.md)'s deferred adaptive-sequencing section), full concept
 knowledge graph (edges, not just tags), weakness detection, Student Digital Twin, weekly AI coach
 review, personalized recommendations. Explicitly requires Phases 1-5 to have accumulated real
 student data to be evidence-based rather than speculative — building this against synthetic/seed
@@ -155,7 +163,7 @@ data would violate the brief's own "every conclusion must be evidence-backed" ru
 ## Phase 10 — Commercial scale: NOT STARTED
 
 Billing, subscriptions (beyond the entitlements *mechanism* built in Phase 1 — actual payment
-provider integration), mobile client, scaling work (SQLite → Postgres per `ARCHITECTURE.md`),
+provider integration), mobile client, scaling work (SQLite → Postgres per [`ARCHITECTURE.md`](ARCHITECTURE.md)),
 advanced analytics, additional external integrations. Gated on there being a real product worth
 scaling, not built speculatively ahead of that.
 
