@@ -47,6 +47,10 @@ next-env.d.ts
 *.db-journal
 
 
+# Generated flash sheets — ~19MB, rebuilt by flash/build.mjs on demand
+/flash/sheets.html
+/flash/test-sheet.html
+
 # Obsidian — per-machine state only.
 # The shared vault config (.obsidian/app.json, appearance.json, graph.json) IS tracked
 # on purpose, so every clone opens the vault with the same settings.

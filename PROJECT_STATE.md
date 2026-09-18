@@ -319,6 +319,24 @@ whenever they're ready, didn't want to auto-rename without asking).
 - **Approval** — human-approval gate for sensitive AI-proposed actions; schema exists, nothing
   writes to it yet since no automation feature produces approval requests in Phase 1
 
+## `flash/` — an unrelated tool in this repo (2026-09-18)
+
+**WORKING, and not part of the trading school app.** `flash/` is a self-contained tattoo flash
+catalogue: it has no dependencies, no framework, and imports nothing from `app/`. It is here
+only because this is the repo that was to hand. It can be lifted into its own repo with a
+single `git init`.
+
+- `node flash/build.mjs` generates `sheets.html` (the printable book — 177 A4 pages, 2,118
+  designs, 12 a page at 60mm, artwork only), `index.html` (browsable catalogue) and
+  `test-sheet.html` (true-size print test with a 100mm ruler).
+- `flash/designs.json` is a ledger, not a cache: a design keeps its reference number forever,
+  and deleting artwork retires that reference rather than recycling it.
+- ~23MB of artwork is committed under `flash/designs/`. The generated `sheets.html` and
+  `test-sheet.html` are gitignored — they rebuild on demand and are ~19MB.
+
+See [`flash/README.md`](flash/README.md) for use, and the 2026-09-18 entry in
+[`SESSION_LOG.md`](SESSION_LOG.md) for what was rejected while building it.
+
 ## Known issues / rough edges
 
 - Retrieval always returns up to 3 sources per query even when only one is truly relevant —
