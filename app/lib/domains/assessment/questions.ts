@@ -5,7 +5,7 @@
 import { prisma } from "@/app/lib/db";
 import { XP_AMOUNTS, XP_SOURCES } from "@/app/lib/domains/progression/xp";
 import { ACHIEVEMENT_KEYS, shouldUnlockFirstQuizPassed } from "@/app/lib/domains/progression/achievements";
-import { applyMasteryEvidence } from "@/app/lib/domains/progression/mastery";
+import { masteryTransition } from "@/app/lib/domains/progression/mastery";
 
 export async function createQuestion(input: {
   lessonId: string;
@@ -78,11 +78,33 @@ export async function gradeAttempt(input: { studentId: string; questionId: strin
       const existing = await tx.conceptMastery.findUnique({
         where: { studentId_conceptId: { studentId: input.studentId, conceptId: concept.id } },
       });
-      const { consecutiveCorrect, state } = applyMasteryEvidence(existing?.consecutiveCorrect ?? 0, correct);
+      const move = masteryTransition(existing?.state ?? null, existing?.consecutiveCorrect ?? 0, correct);
       await tx.conceptMastery.upsert({
         where: { studentId_conceptId: { studentId: input.studentId, conceptId: concept.id } },
-        update: { consecutiveCorrect, state, lastEvidenceAt: new Date() },
-        create: { studentId: input.studentId, conceptId: concept.id, consecutiveCorrect, state, lastEvidenceAt: new Date() },
+        update: { consecutiveCorrect: move.toStreak, state: move.toState, lastEvidenceAt: new Date() },
+        create: {
+          studentId: input.studentId,
+          conceptId: concept.id,
+          consecutiveCorrect: move.toStreak,
+          state: move.toState,
+          lastEvidenceAt: new Date(),
+        },
+      });
+      // The upsert above overwrites the snapshot; this append keeps the path.
+      // Inside the same transaction as the attempt and the upsert on purpose —
+      // a crash between them would leave a mastery state with no evidence
+      // explaining it, which is exactly the drift the ledger exists to prevent.
+      await tx.conceptMasteryEvent.create({
+        data: {
+          studentId: input.studentId,
+          conceptId: concept.id,
+          attemptId: attempt.id,
+          correct,
+          fromState: move.fromState,
+          toState: move.toState,
+          fromStreak: move.fromStreak,
+          toStreak: move.toStreak,
+        },
       });
     }
 

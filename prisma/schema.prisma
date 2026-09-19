@@ -72,6 +72,7 @@ model Student {
   xpEvents         XpEvent[]
   achievements     UserAchievement[]
   conceptMasteries ConceptMastery[]
+  masteryEvents    ConceptMasteryEvent[]
   aiInsights       AiInsight[]
   chartAnswers     ChartAnswer[]
 }
@@ -189,6 +190,7 @@ model Concept {
   lessons        Lesson[]
   questions      Question[]
   masteries      ConceptMastery[]
+  masteryEvents  ConceptMasteryEvent[]
   chartExercises ChartExercise[]
 }
 
@@ -239,6 +241,8 @@ model QuestionAttempt {
 
   student  Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
   question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  masteryEvents ConceptMasteryEvent[]
 }
 
 // --- Chart Lab (Phase 5) -----------------------------------------------------
@@ -361,6 +365,50 @@ model ConceptMastery {
   concept Concept @relation(fields: [conceptId], references: [id], onDelete: Cascade)
 
   @@unique([studentId, conceptId])
+}
+
+// Append-only evidence ledger for concept mastery — the *trajectory*, not just
+// where a student currently stands.
+//
+// `ConceptMastery` above is a derived snapshot that gets OVERWRITTEN on every
+// graded answer: the upsert in gradeAttempt() replaces `state`,
+// `consecutiveCorrect` and `lastEvidenceAt`, so how a student arrived there
+// (when a concept first clicked, how many times they fell back, how long a
+// streak held before it broke) is destroyed on write. That path is the part
+// worth keeping — a snapshot answers "do they know this?", the path answers
+// "how do people learn this, and who is about to slip?".
+//
+// Same shape and same reasoning as XpEvent: record every event, derive the
+// total, never trust a mutable running value that can drift from its own
+// history.
+//
+// One row per piece of evidence APPLIED, not only per state change. A correct
+// answer that leaves state unchanged (already MASTERED) is still evidence, and
+// the streak it extends is signal. Query `fromState != toState` when only the
+// transitions are wanted.
+model ConceptMasteryEvent {
+  id        String @id @default(cuid())
+  studentId String
+  conceptId String
+  // The attempt this evidence came from — an observation always points at the
+  // record that produced it, the same discipline AiInsight follows. Nullable
+  // and SetNull rather than Cascade: a future non-quiz evidence source (Chart
+  // Lab, simulator) can write here without a migration, and deleting an
+  // attempt must never silently rewrite a student's mastery history.
+  attemptId String?
+
+  correct    Boolean
+  fromState  MasteryState
+  toState    MasteryState
+  fromStreak Int
+  toStreak   Int
+  createdAt  DateTime     @default(now())
+
+  student Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  concept Concept          @relation(fields: [conceptId], references: [id], onDelete: Cascade)
+  attempt QuestionAttempt? @relation(fields: [attemptId], references: [id], onDelete: SetNull)
+
+  @@index([studentId, conceptId, createdAt])
 }
 
 // --- Notes / CRM activity ---------------------------------------------------
