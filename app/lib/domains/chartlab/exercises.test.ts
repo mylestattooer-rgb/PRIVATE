@@ -19,11 +19,20 @@ beforeAll(async () => {
   // files (journal.test.ts, lessons.test.ts) also write to, and Vitest runs
   // test files in parallel workers by default, so an unscoped wipe here is a
   // real race, not just a style preference.
+  //
+  // The Concept wipe used to read `contains: "-test"`, which this comment
+  // described as scoped but which actually matched every other file's
+  // fixtures too — `questions-test-concept-1` contains "-test". Because
+  // ConceptMastery/ConceptMasteryEvent cascade from Concept, this worker could
+  // delete another worker's mastery rows mid-test, and questions.test.ts duly
+  // failed in CI with `expected undefined to be 'LEARNING'`. Keep every filter
+  // here anchored to the "chartlab-test-" prefix, including this file's own
+  // concept slugs, or the race comes back.
   await prisma.chartAnswer.deleteMany();
   await prisma.chartExercise.deleteMany();
   await prisma.student.deleteMany({ where: { email: { contains: "chartlab-test-" } } });
   await prisma.plan.deleteMany({ where: { name: { contains: "chartlab-test-" } } });
-  await prisma.concept.deleteMany({ where: { slug: { contains: "-test" } } });
+  await prisma.concept.deleteMany({ where: { slug: { contains: "chartlab-test-" } } });
 });
 
 describe("createChartExercise", () => {
@@ -40,7 +49,7 @@ describe("createChartExercise", () => {
   });
 
   it("connects concepts when conceptIds is given", async () => {
-    const concept = await prisma.concept.create({ data: { name: "Liquidity Sweep", slug: "liquidity-sweep-test" } });
+    const concept = await prisma.concept.create({ data: { name: "Liquidity Sweep", slug: "chartlab-test-liquidity-sweep" } });
     const exercise = await createChartExercise({
       title: "Sweep exercise",
       prompt: "Mark the sweep",

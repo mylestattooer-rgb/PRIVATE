@@ -84,6 +84,32 @@ this was worth doing before anything with a faster payoff.
 **Still open, and the reason the PR is a draft:** whether per-evidence is the right granularity for
 what the data is eventually for. That is a judgement about intended use, not a code question.
 
+### A pre-existing test-isolation race, surfaced by this branch
+
+The docs-only commit above failed CI on a test this branch did not write:
+`questions.test.ts > gradeAttempt > awards XP...` with `expected undefined to be 'LEARNING'`. The
+`ConceptMastery` row had vanished mid-test.
+
+Cause: `chartlab/exercises.test.ts`'s `beforeAll` wiped
+`concept.deleteMany({ where: { slug: { contains: "-test" } } })`. Its own comment described that as
+scoped to `"chartlab-test-"` and warned that an unscoped wipe would be "a real race" — but
+`"-test"` also matches `questions-test-concept-1`, and `ConceptMastery`/`ConceptMasteryEvent`
+cascade from `Concept`. Vitest runs files in parallel workers, so chartlab's worker was deleting
+questions' fixtures while they were in use. The comment was right; the code did not implement it.
+
+Fixed by anchoring the filter to `"chartlab-test-"` and renaming that file's own concept slug to
+`chartlab-test-liquidity-sweep` so it still cleans up after itself. An audit of every `deleteMany`
+in the suite found this was the only over-broad scope; every other file already scopes to its own
+prefix.
+
+- **Latent for a month, and not a flake.** CI had never run the tests at all before 2026-09-18 (the
+  entry below explains why), so this could not have been caught there. It surfaced now because
+  adding `conceptMasteryEvent.deleteMany()` to questions' `beforeAll` shifted worker timing.
+- **Verified by mechanism, not by absence.** Ten consecutive full-suite runs passed 81/81, which
+  only shows the race did not fire. The actual proof was a throwaway script: with the old filter the
+  mastery row was gone after the wipe, with the new filter it survived. **Prefer this for any
+  timing bug — a green run proves nothing about a race.**
+
 **Not done, deliberately:** no consent flow, no terms of service, and no lawful basis for
 processing yet. The ledger makes the data *exist*; it does not make it *usable*. Collecting
 behavioural data without that framing may make it unusable for exactly the purpose that justifies
