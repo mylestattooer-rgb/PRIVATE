@@ -2,7 +2,7 @@
 title: Session Log — Running Project Memory
 doc_type: log
 status: living
-updated: 2026-09-19
+updated: 2026-09-22
 tags: [doc/log, status/living]
 ---
 
@@ -17,6 +17,65 @@ built — otherwise a future session re-tries the dead end.
 Entries before 2026-09-18 were not logged in this format; that history lives in
 [`PROJECT_STATE.md`](PROJECT_STATE.md), which remains the authoritative statement of current
 state. This log is the narrative of how it got there.
+
+---
+
+## 2026-09-22 — Obsidian vault configuration: from Obsidian's defaults to this project's
+
+PR #4 made the repo root a vault. It did not configure one. `.obsidian/` held three files —
+`app.json`, `appearance.json`, `graph.json` — so a fresh clone opened with Obsidian's stock
+defaults and the vault's own structure (the `#status/*` tags, the frontmatter, the front-door
+docs) was invisible until you went looking for it. This session configured it.
+
+**What was added, all committed so every clone gets it.**
+
+- `core-plugins.json` — an explicit on/off list rather than whatever the installed Obsidian
+  version happens to default to. Outline, Backlinks, Outgoing Links, Properties, Tag pane,
+  Bookmarks and Templates on; Canvas, Daily Notes, Slides, Workspaces, Sync off.
+- `bookmarks.json` — the five front-door docs pinned, plus saved searches per status and for
+  `NOT YET IMPLEMENTED` / `MOCKED` / `TODO` / `UNVERIFIED`. The sidebar now answers "where do I
+  start" and "what still needs doing" without reading anything first.
+- `types.json` — property types, so `updated` is a date and `tags` are tags. Without it
+  Obsidian guesses per-note and they sort as strings.
+- `templates.json` + `_templates/` — `Session-Log-Entry` and `Doc-Header`. The session-log
+  template includes the **Rejected, and why** heading, because that is the section that gets
+  skipped and it is the one that stops a future session re-doing dead work.
+- `graph.json` — colour groups for `status/living` and `status/discovery`, which were missing.
+  Four of the six statuses were coloured and two rendered identical to unfiled notes.
+- `appearance.json` — accent set to the gold used across this project's other surfaces, so the
+  vault is recognisably part of it.
+- `INBOX.md` — one dated capture list with an explicit four-outcome triage (do / move / decide /
+  bin), bookmarked first. Deliberately one file, not a folder or a daily-note system.
+- `assets/` as the attachment folder, so pasted images land in one place.
+
+**Rejected, and why.**
+
+- **Daily Notes, and a `journal/` folder.** The obvious ADHD-friendly feature, and wrong here:
+  the vault is a git repo, so every daily note is an untracked file or a commit, and the project
+  already has a memory system (`SESSION_LOG.md`) that daily notes would quietly compete with.
+  `INBOX.md` gets the capture benefit with one file and no parallel structure.
+- **Frontmatter on `prisma/draft-docs/`.** Tempting — six vault notes with no tags, invisible to
+  every status filter. But `prisma/import-drafts.ts` reads those files verbatim into
+  `Document.rawContent` and indexes them for retrieval, so YAML at the top would be imported as
+  part of the lesson body and would surface inside AI citations. Left bare on purpose, with a
+  bookmarked `path:prisma/draft-docs` search instead, and the reason written into
+  [`DOCS_INDEX.md`](DOCS_INDEX.md) so the next session doesn't "fix" it.
+- **Switching to `[[wikilinks]]`.** Obsidian's native form and its default. These docs are read
+  on GitHub as often as in Obsidian, and GitHub does not resolve wikilinks — they render as
+  literal bracketed text. Obsidian resolves markdown links, backlinks and the graph identically.
+  `useMarkdownLinks: true` stays. This is now stated in `DOCS_INDEX.md` rather than left as an
+  undocumented setting someone would reasonably reverse.
+- **Committing community plugins.** `.obsidian/plugins/` stays ignored; they are downloaded
+  binaries, not source. Dataview is the one worth installing by hand — the frontmatter to drive
+  it already exists — so `DOCS_INDEX.md` carries a ready-to-paste query, in a fenced block that
+  degrades to harmless text for anyone who hasn't installed it.
+- **Committing `hotkeys.json`.** Left ignored, as PR #4 had it. Arguable either way; keybindings
+  are closer to personal preference than to shared vault structure, and overwriting someone's
+  muscle memory on clone is worse than them setting three shortcuts.
+
+**No application code changed.** This is tooling and documentation only; the
+WORKING / MOCKED / NOT YET IMPLEMENTED picture in [`PROJECT_STATE.md`](PROJECT_STATE.md) is
+untouched, which is why it wasn't edited.
 
 ---
 

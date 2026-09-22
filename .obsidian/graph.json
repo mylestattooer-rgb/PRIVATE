@@ -8,9 +8,11 @@
   "collapse-color-groups": false,
   "colorGroups": [
     { "query": "path:PROJECT_STATE.md", "color": { "a": 1, "rgb": 14701138 } },
+    { "query": "tag:#status/living", "color": { "a": 1, "rgb": 4886745 } },
     { "query": "tag:#status/built", "color": { "a": 1, "rgb": 5025616 } },
     { "query": "tag:#status/mixed", "color": { "a": 1, "rgb": 14200723 } },
-    { "query": "tag:#status/proposal", "color": { "a": 1, "rgb": 5431378 } }
+    { "query": "tag:#status/proposal", "color": { "a": 1, "rgb": 5431378 } },
+    { "query": "tag:#status/discovery", "color": { "a": 1, "rgb": 10187472 } }
   ],
   "collapse-display": false,
   "showArrows": true,

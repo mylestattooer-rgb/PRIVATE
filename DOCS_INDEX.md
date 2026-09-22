@@ -2,7 +2,7 @@
 title: Docs Index — Map of Content
 doc_type: index
 status: living
-updated: 2026-09-18
+updated: 2026-09-22
 tags: [doc/index, status/living]
 ---
 
@@ -21,6 +21,7 @@ root as a vault and this note is your front door.
 | Doc | What it answers | Status |
 |---|---|---|
 | [`README.md`](README.md) | What is this, how do I run it | living |
+| [`INBOX.md`](INBOX.md) | Unfiled capture — anything that arrives mid-thought | living |
 | [`PROJECT_STATE.md`](PROJECT_STATE.md) | What is actually built right now | living |
 | [`SESSION_LOG.md`](SESSION_LOG.md) | What each session did, decided and learned | living |
 | [`ROADMAP.md`](ROADMAP.md) | What comes next, Phases 0–10 | discovery |
@@ -92,5 +93,49 @@ committed alongside the code, they survive machine changes; notes kept on a desk
 ## Not in the docs
 
 Code lives in `app/`, schema and seeds in `prisma/`, drafts in `prisma/draft-docs/`. Obsidian
-is configured to skip `node_modules/`, `.next/`, `build/`, `coverage/` and other generated
-output so search and the graph stay clean.
+is configured to skip `node_modules/`, `.next/`, `build/`, `coverage/`, `.github/`, `.claude/`
+and other generated output so search and the graph stay clean.
+
+## Using this repo as an Obsidian vault
+
+Open the repo root as a vault. The configuration in `.obsidian/` is committed, so a fresh
+clone on any machine opens with the same setup rather than Obsidian's defaults.
+
+**What's already configured**
+
+| Thing | Where | What it gives you |
+|---|---|---|
+| Bookmarks sidebar | `.obsidian/bookmarks.json` | The five front-door docs pinned, plus saved searches for each status and for `NOT YET IMPLEMENTED` / `MOCKED` / `UNVERIFIED` |
+| Graph colours | `.obsidian/graph.json` | One colour per `#status/*` tag, `PROJECT_STATE.md` highlighted — you can see at a glance how much of the vault is `discovery` rather than `built` |
+| Property types | `.obsidian/types.json` | `updated` is a real date and `tags` are real tags, so they sort and filter instead of being loose text |
+| Templates | `_templates/` | `Session-Log-Entry` and `Doc-Header`. Command palette → *Insert template* |
+| Core plugins | `.obsidian/core-plugins.json` | Explicit on/off list — Outline, Backlinks, Outgoing Links, Properties, Tag pane, Bookmarks, Templates on; Canvas, Daily Notes, Slides, Sync off |
+| Attachments | `assets/` | Pasted images land in one folder instead of beside whichever note you happened to be in |
+
+**Two deliberate choices**
+
+*Markdown links, not `[[wikilinks]]`.* `useMarkdownLinks: true` is set on purpose. Wikilinks
+render as broken text on GitHub, and these docs are read on GitHub at least as often as in
+Obsidian. Obsidian resolves markdown links, backlinks and the graph identically; GitHub does
+not resolve wikilinks at all. Don't switch this.
+
+*No frontmatter on `prisma/draft-docs/`.* Those six files are read verbatim by
+`prisma/import-drafts.ts` into `Document.rawContent` and then indexed for retrieval. YAML added
+at the top would be imported as part of the lesson body and would surface in AI citations. They
+are findable through the bookmarked `path:prisma/draft-docs` search instead. Leave them bare.
+
+**The one plugin worth installing by hand**
+
+Community plugins are not committed (`.obsidian/plugins/` is ignored — they're downloaded
+binaries, not source). If you install one, install **Dataview**. Every doc here already carries
+`doc_type`, `status` and `updated` in its frontmatter, so it turns this index from a table
+maintained by hand into one that is always correct:
+
+```
+TABLE status, updated, doc_type
+FROM "" WHERE doc_type
+SORT updated DESC
+```
+
+Nothing in the vault depends on it, and it renders as a plain code block for anyone who hasn't
+installed it — so it stays safe to use in a repo other people read on GitHub.
