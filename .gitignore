@@ -47,9 +47,12 @@ next-env.d.ts
 *.db-journal
 
 
-# Obsidian — per-machine state only.
-# The shared vault config (.obsidian/app.json, appearance.json, graph.json) IS tracked
-# on purpose, so every clone opens the vault with the same settings.
+# Obsidian — ignore per-machine state only.
+# The shared vault config IS tracked on purpose, so every clone opens the vault the same way:
+#   app.json  appearance.json  graph.json  core-plugins.json  bookmarks.json
+#   templates.json  types.json
+# What's ignored below is either machine-specific (which panes you had open, your own hotkeys)
+# or a binary/downloaded artefact that doesn't belong in a source repo (plugins, themes).
 .obsidian/workspace.json
 .obsidian/workspace-mobile.json
 .obsidian/cache

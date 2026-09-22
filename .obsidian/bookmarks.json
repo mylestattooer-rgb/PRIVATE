@@ -1,0 +1,133 @@
+{
+  "items": [
+    {
+      "type": "file",
+      "ctime": 1790110134900,
+      "path": "INBOX.md",
+      "title": "Inbox \u2014 capture here"
+    },
+    {
+      "type": "file",
+      "ctime": 1790110134900,
+      "path": "PROJECT_STATE.md",
+      "title": "Project State \u2014 source of truth"
+    },
+    {
+      "type": "file",
+      "ctime": 1790110134900,
+      "path": "DOCS_INDEX.md",
+      "title": "Docs Index \u2014 front door"
+    },
+    {
+      "type": "file",
+      "ctime": 1790110134900,
+      "path": "SESSION_LOG.md",
+      "title": "Session Log \u2014 running memory"
+    },
+    {
+      "type": "file",
+      "ctime": 1790110134900,
+      "path": "ROADMAP.md",
+      "title": "Roadmap \u2014 what's next"
+    },
+    {
+      "type": "group",
+      "ctime": 1790110134900,
+      "title": "Status filters",
+      "items": [
+        {
+          "type": "search",
+          "ctime": 1790110134900,
+          "query": "tag:#status/living",
+          "title": "Living \u2014 kept current"
+        },
+        {
+          "type": "search",
+          "ctime": 1790110134900,
+          "query": "tag:#status/mixed",
+          "title": "Mixed \u2014 part shipped, part design"
+        },
+        {
+          "type": "search",
+          "ctime": 1790110134900,
+          "query": "tag:#status/discovery",
+          "title": "Discovery \u2014 nothing built yet"
+        },
+        {
+          "type": "search",
+          "ctime": 1790110134900,
+          "query": "tag:#status/proposal",
+          "title": "Proposal \u2014 not decided"
+        }
+      ]
+    },
+    {
+      "type": "group",
+      "ctime": 1790110134900,
+      "title": "Find work",
+      "items": [
+        {
+          "type": "search",
+          "ctime": 1790110134900,
+          "query": "line:(NOT YET IMPLEMENTED)",
+          "title": "NOT YET IMPLEMENTED"
+        },
+        {
+          "type": "search",
+          "ctime": 1790110134900,
+          "query": "line:(MOCKED)",
+          "title": "MOCKED"
+        },
+        {
+          "type": "search",
+          "ctime": 1790110134900,
+          "query": "line:(TODO OR FIXME OR UNVERIFIED)",
+          "title": "TODO / FIXME / UNVERIFIED"
+        },
+        {
+          "type": "search",
+          "ctime": 1790110134900,
+          "query": "path:prisma/draft-docs",
+          "title": "Methodology drafts (need review)"
+        }
+      ]
+    },
+    {
+      "type": "group",
+      "ctime": 1790110134900,
+      "title": "Reference",
+      "items": [
+        {
+          "type": "file",
+          "ctime": 1790110134900,
+          "path": "ARCHITECTURE.md",
+          "title": "Architecture"
+        },
+        {
+          "type": "file",
+          "ctime": 1790110134900,
+          "path": "AI_ARCHITECTURE.md",
+          "title": "AI Architecture"
+        },
+        {
+          "type": "file",
+          "ctime": 1790110134900,
+          "path": "DATABASE.md",
+          "title": "Database"
+        },
+        {
+          "type": "file",
+          "ctime": 1790110134900,
+          "path": "SECURITY.md",
+          "title": "Security"
+        },
+        {
+          "type": "file",
+          "ctime": 1790110134900,
+          "path": "CURRICULUM_SYSTEM.md",
+          "title": "Curriculum System"
+        }
+      ]
+    }
+  ]
+}

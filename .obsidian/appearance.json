@@ -1,6 +1,8 @@
 {
-  "accentColor": "",
+  "accentColor": "#c9a227",
   "theme": "system",
   "showViewHeader": true,
-  "nativeMenus": false
+  "nativeMenus": false,
+  "showInlineTitle": true,
+  "cssTheme": ""
 }

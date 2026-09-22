@@ -47,3 +47,38 @@ export function applyMasteryEvidence(
   const consecutiveCorrect = thisAttemptCorrect ? currentConsecutiveCorrect + 1 : 0;
   return { consecutiveCorrect, state: masteryStateForStreak(true, consecutiveCorrect) };
 }
+
+// One piece of evidence, expressed as the movement it caused — what
+// gradeAttempt() persists to ConceptMasteryEvent. Kept pure and separate from
+// applyMasteryEvidence() so the "what changed" shape is unit-testable without
+// a database, matching this folder's existing split between derivation and
+// the DB writes that consume it.
+export type MasteryTransition = {
+  fromState: MasteryStateValue;
+  toState: MasteryStateValue;
+  fromStreak: number;
+  toStreak: number;
+  // True only when the ladder position moved. Streak movement alone (a
+  // correct answer at an unchanged state) is still recorded — this flag just
+  // makes "show me the transitions" a filter rather than a comparison.
+  changed: boolean;
+};
+
+export function masteryTransition(
+  // null means no ConceptMastery row exists yet — the concept has never been
+  // attempted, so the student starts from NOT_INTRODUCED rather than from the
+  // INTRODUCED that a zero streak would otherwise imply.
+  currentState: MasteryStateValue | null,
+  currentConsecutiveCorrect: number,
+  thisAttemptCorrect: boolean
+): MasteryTransition {
+  const fromState = currentState ?? "NOT_INTRODUCED";
+  const { consecutiveCorrect, state } = applyMasteryEvidence(currentConsecutiveCorrect, thisAttemptCorrect);
+  return {
+    fromState,
+    toState: state,
+    fromStreak: currentConsecutiveCorrect,
+    toStreak: consecutiveCorrect,
+    changed: fromState !== state,
+  };
+}

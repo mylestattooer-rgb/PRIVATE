@@ -7,6 +7,10 @@
   "strictLineBreaks": false,
   "showFrontmatter": true,
   "attachmentFolderPath": "assets",
+  "newFileLocation": "root",
+  "defaultViewMode": "source",
+  "livePreview": true,
+  "trashOption": "local",
   "userIgnoreFilters": [
     "node_modules/",
     ".next/",
@@ -14,6 +18,8 @@
     "build/",
     "coverage/",
     ".git/",
+    ".github/",
+    ".claude/",
     ".vercel/",
     "app/generated/",
     "public/"

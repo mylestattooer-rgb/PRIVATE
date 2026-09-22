@@ -1,0 +1,9 @@
+{
+  "types": {
+    "title": "text",
+    "doc_type": "text",
+    "status": "text",
+    "updated": "date",
+    "tags": "tags"
+  }
+}
